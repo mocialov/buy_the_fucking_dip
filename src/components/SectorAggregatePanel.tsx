@@ -488,20 +488,20 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           📋 Aggregated Dip Performance by Ticker
         </div>
 
-        <div style={{ overflowX: isMobile ? 'auto' : 'visible' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px', minWidth: isMobile ? '800px' : 'auto' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Rank</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Ticker</th>
-                {!isMobile && <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Company</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Company</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Status</th>
-                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Dips</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Total Dips</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Avg Depth</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Max Depth</th>
-                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Dip Score</th>}
-                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Days in Dips</th>}
-                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>vs Benchmark</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Dip Score</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Total Days in Dips</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>vs Benchmark</th>
               </tr>
             </thead>
             <tbody>
@@ -614,9 +614,9 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     <td style={{ padding: isMobile ? '6px' : '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace', fontSize: isMobile ? '12px' : 'inherit' }}>
                       {detail.ticker}
                     </td>
-                    {!isMobile && <td style={{ padding: '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: isMobile ? '11px' : 'inherit' }}>
                       {detail.companyName}
-                    </td>}
+                    </td>
                     <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right' }}>
                       {detail.isETF ? (
                         <span style={{ color: '#9CA3AF' }}>—</span>
@@ -655,9 +655,9 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                         </span>
                       )}
                     </td>
-                    {!isMobile && <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151', fontSize: isMobile ? '11px' : 'inherit' }}>
                       {detail.isETF ? '—' : detail.totalDips}
-                    </td>}
+                    </td>
                     <td style={{
                       padding: isMobile ? '6px' : '10px',
                       textAlign: 'right',
@@ -676,26 +676,27 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     }}>
                       {detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
-                    {!isMobile && <td style={{
-                      padding: '10px',
+                    <td style={{
+                      padding: isMobile ? '6px' : '10px',
                       textAlign: 'right',
                       fontWeight: '600',
-                      color: detail.dipScore > 10 ? '#DC2626' : detail.dipScore > 5 ? '#F59E0B' : '#059669'
+                      color: detail.dipScore > 10 ? '#DC2626' : detail.dipScore > 5 ? '#F59E0B' : '#059669',
+                      fontSize: isMobile ? '11px' : 'inherit'
                     }}>
                       {detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—'}
-                    </td>}
-                    {!isMobile && <td style={{ padding: '10px', textAlign: 'right', color: '#6B7280' }}>
+                    </td>
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', color: '#6B7280', fontSize: isMobile ? '11px' : 'inherit' }}>
                       {detail.totalDipDays > 0 ? detail.totalDipDays : '—'}
-                    </td>}
-                    {!isMobile && <td style={{
-                      padding: '10px',
+                    </td>
+                    <td style={{
+                      padding: isMobile ? '6px' : '10px',
                       textAlign: 'right',
-                      fontSize: '12px',
+                      fontSize: isMobile ? '10px' : '12px',
                       color: comparisonColor,
                       fontWeight: '500'
                     }}>
                       {breadthComparison}
-                    </td>}
+                    </td>
                   </tr>
                   </React.Fragment>
                 );
@@ -715,11 +716,11 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker.
           <strong>📊 = ETF</strong> (shown with light blue background at top of table).
           <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
-          {!isMobile && <><strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
+          <strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
           "Stock-specific" = ETFs had no dips.
           "X% worse/better" = stock's score is X% higher/lower than ETF average.
           "Similar" = within ±20% of ETF average. |
-          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.</>}
+          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.
         </div>
       </div>
     </div>
