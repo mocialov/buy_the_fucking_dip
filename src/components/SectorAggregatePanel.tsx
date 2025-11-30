@@ -478,18 +478,18 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         overflow: 'hidden'
       }}>
         <div style={{
-          padding: '12px 15px',
+          padding: isMobile ? '8px 10px' : '12px 15px',
           background: '#F9FAFB',
           borderBottom: '2px solid #E5E7EB',
           fontWeight: '600',
-          fontSize: '14px',
+          fontSize: isMobile ? '12px' : '14px',
           color: '#374151'
         }}>
           📋 Aggregated Dip Performance by Ticker
         </div>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+
+        <div style={{ overflowX: isMobile ? 'auto' : 'visible' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                 <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Rank</th>
