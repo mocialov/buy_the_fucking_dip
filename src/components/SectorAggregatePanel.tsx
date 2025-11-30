@@ -655,45 +655,47 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151' }}>
+                    {!isMobile && <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151' }}>
                       {detail.isETF ? '—' : detail.totalDips}
-                    </td>
-                    <td style={{ 
-                      padding: '10px', 
-                      textAlign: 'right', 
+                    </td>}
+                    <td style={{
+                      padding: isMobile ? '6px' : '10px',
+                      textAlign: 'right',
                       fontWeight: '600',
-                      color: detail.avgDipDepth > 0.15 ? '#DC2626' : detail.avgDipDepth > 0.08 ? '#F59E0B' : '#059669'
+                      color: detail.avgDipDepth > 0.15 ? '#DC2626' : detail.avgDipDepth > 0.08 ? '#F59E0B' : '#059669',
+                      fontSize: isMobile ? '11px' : 'inherit'
                     }}>
                       {detail.avgDipDepth > 0 ? `${(detail.avgDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
-                    <td style={{ 
-                      padding: '10px', 
-                      textAlign: 'right', 
+                    <td style={{
+                      padding: isMobile ? '6px' : '10px',
+                      textAlign: 'right',
                       fontWeight: '600',
-                      color: detail.maxDipDepth > 0.20 ? '#DC2626' : detail.maxDipDepth > 0.10 ? '#F59E0B' : '#059669'
+                      color: detail.maxDipDepth > 0.20 ? '#DC2626' : detail.maxDipDepth > 0.10 ? '#F59E0B' : '#059669',
+                      fontSize: isMobile ? '11px' : 'inherit'
                     }}>
                       {detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
-                    <td style={{ 
-                      padding: '10px', 
-                      textAlign: 'right', 
+                    {!isMobile && <td style={{
+                      padding: '10px',
+                      textAlign: 'right',
                       fontWeight: '600',
                       color: detail.dipScore > 10 ? '#DC2626' : detail.dipScore > 5 ? '#F59E0B' : '#059669'
                     }}>
                       {detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—'}
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right', color: '#6B7280' }}>
+                    </td>}
+                    {!isMobile && <td style={{ padding: '10px', textAlign: 'right', color: '#6B7280' }}>
                       {detail.totalDipDays > 0 ? detail.totalDipDays : '—'}
-                    </td>
-                    <td style={{ 
-                      padding: '10px', 
+                    </td>}
+                    {!isMobile && <td style={{
+                      padding: '10px',
                       textAlign: 'right',
                       fontSize: '12px',
                       color: comparisonColor,
                       fontWeight: '500'
                     }}>
                       {breadthComparison}
-                    </td>
+                    </td>}
                   </tr>
                   </React.Fragment>
                 );
