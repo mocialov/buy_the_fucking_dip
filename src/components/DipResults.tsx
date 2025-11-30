@@ -2,7 +2,7 @@
  * DipResults: Display detected dips in a table format
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { DipMetrics, DataPoint } from '../dip/types';
 import { getTrendContextHybrid } from '../dip/trendDetection';
 
@@ -12,6 +12,13 @@ interface DipResultsProps {
 }
 
 export const DipResults: React.FC<DipResultsProps> = ({ dips, series }) => {
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const hasDates = Array.isArray(series) && series.length > 0 && typeof series[0] === 'object' && 'date' in series[0];
   
   const getSeriesValues = () => {
