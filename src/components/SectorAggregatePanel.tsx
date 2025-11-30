@@ -421,9 +421,9 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       {/* Detailed Metrics */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '12px',
-        padding: '15px',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: isMobile ? '8px' : '12px',
+        padding: isMobile ? '10px' : '15px',
         background: '#F9FAFB',
         borderRadius: '6px'
       }}>
