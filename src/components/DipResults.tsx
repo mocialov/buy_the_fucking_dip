@@ -2,7 +2,7 @@
  * DipResults: Display detected dips in a table format
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import type { DipMetrics, DataPoint } from '../dip/types';
 import { getTrendContextHybrid } from '../dip/trendDetection';
 

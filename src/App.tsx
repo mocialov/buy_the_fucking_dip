@@ -264,13 +264,11 @@ function App() {
         )}
 
         {/* Control Panel (Sector Selector) */}
-        <div className={`control-panel ${sectorAnalyses.length > 0 ? 'fixed' : ''}`} style={{
+        <div className={`control-panel ${sectorAnalyses.length > 0 ? 'fixed' : ''} ${isControlPanelMinimized ? 'minimized' : ''}`} style={{
           display: isControlPanelMinimized ? 'flex' : 'block',
-          flexDirection: isControlPanelMinimized ? 'column' : 'row',
+          flexDirection: isControlPanelMinimized ? 'row' : 'row',
           alignItems: isControlPanelMinimized ? 'center' : 'stretch',
-          justifyContent: isControlPanelMinimized ? 'center' : 'flex-start',
           gap: isControlPanelMinimized ? '8px' : '0',
-          width: isControlPanelMinimized ? 'auto' : '100%',
           padding: isControlPanelMinimized ? '12px' : 'var(--spacing-lg)',
           minHeight: isControlPanelMinimized ? 'auto' : 'unset'
         }}>
@@ -311,22 +309,24 @@ function App() {
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>Analysis Controls</h3>
-                <button
-                  onClick={() => setIsControlPanelMinimized(true)}
-                  className="btn btn-icon"
-                  title="Minimize control panel"
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    padding: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: '0'
-                  }}
-                >
-                  −
-                </button>
+                {sectorAnalyses.length > 0 && (
+                  <button
+                    onClick={() => setIsControlPanelMinimized(true)}
+                    className="btn btn-icon"
+                    title="Minimize control panel"
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      padding: '0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: '0'
+                    }}
+                  >
+                    −
+                  </button>
+                )}
               </div>
               <div className="control-grid">
                 <span className="control-label">Sector:</span>

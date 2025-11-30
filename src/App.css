@@ -135,6 +135,20 @@ body {
   animation: slideUp 0.3s ease-out;
 }
 
+.control-panel.minimized {
+  width: auto !important;
+  max-width: fit-content !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.control-panel.fixed.minimized {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  margin-left: calc(700px - 100px) !important;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -490,10 +504,17 @@ body {
     max-width: 100%;
   }
 
-  .control-panel.fixed {
+  .control-panel.fixed:not(.minimized) {
     width: calc(100% - 16px);
     left: 50%;
     transform: translateX(-50%);
+  }
+
+  .control-panel.fixed.minimized {
+    left: auto !important;
+    right: var(--spacing-sm) !important;
+    transform: none !important;
+    margin-left: 0 !important;
   }
 
   .control-grid {
@@ -529,13 +550,20 @@ body {
     border-radius: var(--radius-md);
   }
 
-  .control-panel.fixed {
+  .control-panel.fixed:not(.minimized) {
     bottom: var(--spacing-sm);
     left: 50%;
     transform: translateX(-50%);
     width: calc(100% - 16px);
     max-width: none;
     padding: var(--spacing-md);
+  }
+
+  .control-panel.fixed.minimized {
+    left: auto !important;
+    right: var(--spacing-sm) !important;
+    transform: none !important;
+    margin-left: 0 !important;
   }
 
   .control-grid {
@@ -664,10 +692,18 @@ body {
     padding: var(--spacing-sm);
   }
 
-  .control-panel.fixed {
+  .control-panel.fixed:not(.minimized) {
     bottom: var(--spacing-xs);
     width: calc(100% - 8px);
     padding: var(--spacing-sm);
+  }
+
+  .control-panel.fixed.minimized {
+    left: auto !important;
+    right: 4px !important;
+    transform: none !important;
+    margin-left: 0 !important;
+    bottom: var(--spacing-xs);
   }
 
   .control-grid {
