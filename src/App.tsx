@@ -263,6 +263,7 @@ function App() {
         )}
 
         {/* Control Panel (Sector Selector) */}
+        {!hasAnalyzed && sectorAnalyses.length === 0 && (
         <div className={`control-panel ${sectorAnalyses.length > 0 ? 'fixed' : ''}`}>
           <div className="control-grid">
             <span className="control-label">Sector:</span>
@@ -330,7 +331,8 @@ function App() {
             </div>
           </div>
         </div>
-      
+        )}
+
         {/* About Popup Modal */}
         {showAbout && (
           <>
