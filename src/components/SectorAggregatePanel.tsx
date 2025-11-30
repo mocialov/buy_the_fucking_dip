@@ -492,16 +492,16 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Rank</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Ticker</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Company</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Status</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Dips</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Avg Depth</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Max Depth</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Dip Score</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Days in Dips</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>vs Benchmark</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Rank</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Ticker</th>
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Company</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Status</th>
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Dips</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Avg Depth</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Max Depth</th>
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Dip Score</th>}
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Days in Dips</th>}
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>vs Benchmark</th>}
               </tr>
             </thead>
             <tbody>
