@@ -452,12 +452,12 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       {/* Interpretation Guide */}
       <div style={{
         marginTop: '15px',
-        padding: '12px',
+        padding: isMobile ? '10px' : '12px',
         background: '#EFF6FF',
         borderRadius: '6px',
         border: '1px solid #BFDBFE'
       }}>
-        <div style={{ fontSize: '13px', color: '#1E40AF', lineHeight: '1.6' }}>
+        <div style={{ fontSize: isMobile ? '12px' : '13px', color: '#1E40AF', lineHeight: '1.6' }}>
           <strong>💡 Interpretation:</strong>
           {metrics.breadthPercentage >= 50 ? (
             <span> High breadth ({metrics.breadthPercentage.toFixed(0)}%) suggests sector-wide pressure. This may indicate systemic issues or broader market correction affecting the entire {sectorName.toLowerCase()} sector.</span>
