@@ -705,21 +705,21 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         </div>
         
         <div style={{
-          padding: '10px 15px',
+          padding: isMobile ? '8px 10px' : '10px 15px',
           background: '#F9FAFB',
           borderTop: '1px solid #E5E7EB',
-          fontSize: '12px',
+          fontSize: isMobile ? '10px' : '12px',
           color: '#6B7280',
           lineHeight: '1.6'
         }}>
-          💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker. 
-          <strong>📊 = ETF</strong> (shown with light blue background at top of table). 
+          💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker.
+          <strong>📊 = ETF</strong> (shown with light blue background at top of table).
           <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
-          <strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score. 
-          "Stock-specific" = ETFs had no dips. 
-          "X% worse/better" = stock's score is X% higher/lower than ETF average. 
-          "Similar" = within ±20% of ETF average. | 
-          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.
+          {!isMobile && <><strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
+          "Stock-specific" = ETFs had no dips.
+          "X% worse/better" = stock's score is X% higher/lower than ETF average.
+          "Similar" = within ±20% of ETF average. |
+          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.</>}
         </div>
       </div>
     </div>
