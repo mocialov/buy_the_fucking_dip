@@ -29,6 +29,7 @@ function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string>(() => getUserApiKey() || DEMO_API_KEY);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isControlPanelMinimized, setIsControlPanelMinimized] = useState(false);
 
   // Save user API key to localStorage when it changes
   useEffect(() => {
