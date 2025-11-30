@@ -308,6 +308,14 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   sectorName,
   selectedInterval
 }) => {
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const metrics = calculateSectorMetrics(sectorAnalyses, selectedInterval);
   const healthColor = getHealthColor(metrics.sectorHealthScore);
   const breadthColor = getBreadthColor(metrics.breadthPercentage);
@@ -316,16 +324,16 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
     <div style={{
       background: 'white',
       borderRadius: '8px',
-      padding: '20px',
+      padding: isMobile ? '12px' : '20px',
       marginBottom: '20px',
       border: '2px solid #E5E7EB',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
     }}>
-      <div style={{ marginBottom: '20px', borderBottom: '2px solid #E5E7EB', paddingBottom: '15px' }}>
-        <h2 style={{ margin: '0 0 5px 0', color: '#1a1a1a', fontSize: '24px' }}>
+      <div style={{ marginBottom: '15px', borderBottom: '2px solid #E5E7EB', paddingBottom: '12px' }}>
+        <h2 style={{ margin: '0 0 5px 0', color: '#1a1a1a', fontSize: isMobile ? '18px' : '24px' }}>
           {sectorName} - Sector Aggregate Analysis
         </h2>
-        <p style={{ margin: 0, color: '#6B7280', fontSize: '14px' }}>
+        <p style={{ margin: 0, color: '#6B7280', fontSize: isMobile ? '12px' : '14px' }}>
           Composite metrics derived from {metrics.totalTickers} constituent tickers
         </p>
       </div>
@@ -333,8 +341,8 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       {/* Key Metrics Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '15px',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: isMobile ? '10px' : '15px',
         marginBottom: '20px'
       }}>
         {/* Sector Health Score */}
