@@ -608,16 +608,16 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                             : (detail.totalDips > 0 ? '#FEF9C3' : 'white')  // Light yellow for recovered, white for no dips
                       }}
                     >
-                    <td style={{ padding: '10px', color: '#6B7280', fontWeight: '500' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#6B7280', fontWeight: '500' }}>
                       {index + 1}
                     </td>
-                    <td style={{ padding: '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace', fontSize: isMobile ? '12px' : 'inherit' }}>
                       {detail.ticker}
                     </td>
-                    <td style={{ padding: '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {!isMobile && <td style={{ padding: '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {detail.companyName}
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>
+                    </td>}
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right' }}>
                       {detail.isETF ? (
                         <span style={{ color: '#9CA3AF' }}>—</span>
                       ) : detail.hasOngoingDip ? (
