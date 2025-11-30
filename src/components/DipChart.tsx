@@ -3,7 +3,7 @@
  * SVG-based visualization replicating Python matplotlib output
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import type { DipMetrics, DataPoint } from '../dip/types';
 
 interface DipChartProps {
@@ -18,9 +18,27 @@ const COLORS = ['#FF6B6B', '#FFA500', '#FFD93D', '#6BCF7F', '#4ECDC4'];
 export const DipChart: React.FC<DipChartProps> = ({
   series,
   dips,
-  width = 900,
-  height = 400
+  width: propWidth,
+  height: propHeight
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(propWidth || 900);
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerWidth(Math.max(300, rect.width));
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  const width = Math.min(containerWidth, propWidth || containerWidth);
+  const height = propHeight || Math.max(250, width * 0.4);
   const padding = { top: 40, right: 40, bottom: 60, left: 60 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
@@ -56,8 +74,8 @@ export const DipChart: React.FC<DipChartProps> = ({
   }, [series, xScale, yScale, yMin]);
 
   return (
-    <div style={{ display: 'flex', width: '100%', position: 'relative', justifyContent: 'center', background: 'white' }}>
-      <svg width={width} height={height} style={{ border: '1px solid #ddd', background: 'white' }}>
+    <div ref={containerRef} style={{ display: 'flex', width: '100%', position: 'relative', justifyContent: 'center', background: 'white', minHeight: height }}>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ border: '1px solid #ddd', background: 'white', maxWidth: '100%', height: 'auto' }} preserveAspectRatio="xMidYMid meet">
       {/* Grid lines */}
       <g opacity={0.2}>
         {[0, 0.25, 0.5, 0.75, 1].map(frac => {

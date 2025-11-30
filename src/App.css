@@ -135,6 +135,20 @@ body {
   animation: slideUp 0.3s ease-out;
 }
 
+.control-panel.minimized {
+  width: auto !important;
+  max-width: fit-content !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.control-panel.fixed.minimized {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  margin-left: calc(700px - 100px) !important;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -480,34 +494,271 @@ body {
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .app-title {
-    font-size: 1.875rem;
+/* Mobile-First Responsive Design */
+@media (max-width: 1024px) {
+  .app-container {
+    padding: var(--spacing-md) var(--spacing-sm);
   }
-  
+
+  .app-content {
+    max-width: 100%;
+  }
+
+  .control-panel.fixed:not(.minimized) {
+    width: calc(100% - 16px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .control-panel.fixed.minimized {
+    left: auto !important;
+    right: var(--spacing-sm) !important;
+    transform: none !important;
+    margin-left: 0 !important;
+  }
+
+  .control-grid {
+    gap: var(--spacing-sm);
+  }
+
+  .chart-container {
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+  }
+
+  .app-container {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+
+  .app-title {
+    font-size: 1.5rem;
+  }
+
+  .app-subtitle {
+    font-size: 0.9375rem;
+  }
+
+  .control-panel {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--radius-md);
+  }
+
+  .control-panel.fixed:not(.minimized) {
+    bottom: var(--spacing-sm);
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 16px);
+    max-width: none;
+    padding: var(--spacing-md);
+  }
+
+  .control-panel.fixed.minimized {
+    left: auto !important;
+    right: var(--spacing-sm) !important;
+    transform: none !important;
+    margin-left: 0 !important;
+  }
+
   .control-grid {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--spacing-sm);
   }
-  
-  .control-select,
-  .api-key-input {
+
+  .control-label {
+    font-size: 0.8125rem;
+    margin-left: 0 !important;
+  }
+
+  .control-select {
     width: 100%;
+    min-width: unset;
+    padding: 8px 12px;
+    font-size: 0.875rem;
   }
-  
+
   .btn {
     width: 100%;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    min-height: 44px;
   }
-  
+
+  .btn-icon {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .api-key-input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+
+  .card {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--radius-md);
+  }
+
+  .card-header {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .card-title {
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .chart-container {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
   .modal {
-    max-width: 95%;
-    margin: var(--spacing-md);
+    max-width: 95vw;
+    max-height: 90vh;
+    width: 95%;
+    margin: auto;
+    padding: var(--spacing-lg);
   }
-  
+
+  .modal-title {
+    font-size: 1.375rem;
+  }
+
+  .modal-content {
+    font-size: 0.875rem;
+  }
+
+  .modal-content h3 {
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-xs);
+    font-size: 1rem;
+  }
+
+  .custom-ticker-section {
+    margin-bottom: 140px;
+    padding: var(--spacing-md);
+  }
+
+  .custom-ticker-title {
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-sm);
+  }
+
   .custom-ticker-input-group {
     flex-direction: column;
     max-width: 100%;
+    gap: var(--spacing-sm);
+  }
+
+  .custom-ticker-input {
+    padding: 10px 12px;
+    font-size: 0.9375rem;
+  }
+
+  .progress-badge {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --spacing-lg: 12px;
+    --spacing-xl: 16px;
+    --spacing-md: 12px;
+  }
+
+  .app-container {
+    padding: var(--spacing-sm);
+  }
+
+  .app-title {
+    font-size: 1.25rem;
+  }
+
+  .control-panel {
+    padding: var(--spacing-sm);
+  }
+
+  .control-panel.fixed:not(.minimized) {
+    bottom: var(--spacing-xs);
+    width: calc(100% - 8px);
+    padding: var(--spacing-sm);
+  }
+
+  .control-panel.fixed.minimized {
+    left: auto !important;
+    right: 4px !important;
+    transform: none !important;
+    margin-left: 0 !important;
+    bottom: var(--spacing-xs);
+  }
+
+  .control-grid {
+    gap: var(--spacing-xs);
+  }
+
+  .control-label {
+    font-size: 0.75rem;
+  }
+
+  .control-select {
+    padding: 8px 10px;
+    font-size: 0.8125rem;
+  }
+
+  .btn {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    min-height: 40px;
+  }
+
+  .card {
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .card-header {
+    font-size: 1.125rem;
+  }
+
+  .card-title {
+    font-size: 1rem;
+    gap: var(--spacing-xs);
+  }
+
+  .chart-container {
+    padding: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .modal {
+    padding: var(--spacing-md);
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .custom-ticker-section {
+    padding: var(--spacing-sm);
+    margin-bottom: 100px;
+  }
+
+  .custom-ticker-title {
+    font-size: 1rem;
   }
 }
 

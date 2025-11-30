@@ -29,6 +29,7 @@ function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string>(() => getUserApiKey() || DEMO_API_KEY);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isControlPanelMinimized, setIsControlPanelMinimized] = useState(false);
 
   // Save user API key to localStorage when it changes
   useEffect(() => {
@@ -263,74 +264,139 @@ function App() {
         )}
 
         {/* Control Panel (Sector Selector) */}
-        <div className={`control-panel ${sectorAnalyses.length > 0 ? 'fixed' : ''}`}>
-          <div className="control-grid">
-            <span className="control-label">Sector:</span>
-            <select
-              value={selectedSector}
-              onChange={(e) => setSelectedSector(e.target.value)}
-              className="control-select"
-            >
-              <option value="">-- Select a sector --</option>
-              {Object.keys(MARKET_SECTORS).map(sector => (
-                <option key={sector} value={sector}>{sector}</option>
-              ))}
-            </select>
-            
-            <button
-              onClick={analyzeSector}
-              disabled={!selectedSector || isLoadingSector}
-              className="btn btn-primary"
-            >
-              {isLoadingSector ? (
-                <>
-                  <span className="loading-spinner"></span>
-                  {loadingProgress.current}/{loadingProgress.total}...
-                </>
-              ) : (
-                '🔍 Analyze'
-              )}
-            </button>
-
-            {sectorAnalyses.length > 0 && (
-              <>
-                <span className="control-label" style={{ marginLeft: '16px' }}>Interval:</span>
-                <select
-                  value={selectedTimeInterval}
-                  onChange={(e) => setSelectedTimeInterval(e.target.value as TimeInterval)}
-                  className="control-select"
-                >
-                  {Object.entries(TIME_INTERVALS).map(([key, { label }]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <label className="control-label" style={{ whiteSpace: 'nowrap' }}>
-                API Key:
-              </label>
-              <input
-                type="text"
-                value={userApiKey}
-                onChange={(e) => setUserApiKey(e.target.value)}
-                placeholder={DEMO_API_KEY}
-                className="api-key-input"
-                title="Enter your Twelve Data API key (or use the demo key)"
-              />
-              
+        <div className={`control-panel ${sectorAnalyses.length > 0 ? 'fixed' : ''} ${isControlPanelMinimized ? 'minimized' : ''}`} style={{
+          display: isControlPanelMinimized ? 'flex' : 'block',
+          flexDirection: isControlPanelMinimized ? 'row' : 'row',
+          alignItems: isControlPanelMinimized ? 'center' : 'stretch',
+          gap: isControlPanelMinimized ? '8px' : '0',
+          padding: isControlPanelMinimized ? '12px' : 'var(--spacing-lg)',
+          minHeight: isControlPanelMinimized ? 'auto' : 'unset'
+        }}>
+          {isControlPanelMinimized ? (
+            <>
+              <button
+                onClick={() => setIsControlPanelMinimized(false)}
+                className="btn btn-icon"
+                title="Expand control panel"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ⚙️
+              </button>
               <button
                 onClick={() => setShowAbout(!showAbout)}
                 className="btn btn-icon"
                 title="About Dip Detection"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  padding: '0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
                 ?
               </button>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>Analysis Controls</h3>
+                {sectorAnalyses.length > 0 && (
+                  <button
+                    onClick={() => setIsControlPanelMinimized(true)}
+                    className="btn btn-icon"
+                    title="Minimize control panel"
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      padding: '0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: '0'
+                    }}
+                  >
+                    −
+                  </button>
+                )}
+              </div>
+              <div className="control-grid">
+                <span className="control-label">Sector:</span>
+                <select
+                  value={selectedSector}
+                  onChange={(e) => setSelectedSector(e.target.value)}
+                  className="control-select"
+                >
+                  <option value="">-- Select a sector --</option>
+                  {Object.keys(MARKET_SECTORS).map(sector => (
+                    <option key={sector} value={sector}>{sector}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={analyzeSector}
+                  disabled={!selectedSector || isLoadingSector}
+                  className="btn btn-primary"
+                >
+                  {isLoadingSector ? (
+                    <>
+                      <span className="loading-spinner"></span>
+                      {loadingProgress.current}/{loadingProgress.total}...
+                    </>
+                  ) : (
+                    '🔍 Analyze'
+                  )}
+                </button>
+
+                {sectorAnalyses.length > 0 && (
+                  <>
+                    <span className="control-label" style={{ marginLeft: '16px' }}>Interval:</span>
+                    <select
+                      value={selectedTimeInterval}
+                      onChange={(e) => setSelectedTimeInterval(e.target.value as TimeInterval)}
+                      className="control-select"
+                    >
+                      {Object.entries(TIME_INTERVALS).map(([key, { label }]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label className="control-label" style={{ whiteSpace: 'nowrap' }}>
+                    API Key:
+                  </label>
+                  <input
+                    type="text"
+                    value={userApiKey}
+                    onChange={(e) => setUserApiKey(e.target.value)}
+                    placeholder={DEMO_API_KEY}
+                    className="api-key-input"
+                    title="Enter your Twelve Data API key (or use the demo key)"
+                  />
+
+                  <button
+                    onClick={() => setShowAbout(!showAbout)}
+                    className="btn btn-icon"
+                    title="About Dip Detection"
+                  >
+                    ?
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      
+
         {/* About Popup Modal */}
         {showAbout && (
           <>

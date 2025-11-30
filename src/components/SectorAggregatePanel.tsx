@@ -308,6 +308,14 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   sectorName,
   selectedInterval
 }) => {
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const metrics = calculateSectorMetrics(sectorAnalyses, selectedInterval);
   const healthColor = getHealthColor(metrics.sectorHealthScore);
   const breadthColor = getBreadthColor(metrics.breadthPercentage);
@@ -316,16 +324,16 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
     <div style={{
       background: 'white',
       borderRadius: '8px',
-      padding: '20px',
+      padding: isMobile ? '12px' : '20px',
       marginBottom: '20px',
       border: '2px solid #E5E7EB',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
     }}>
-      <div style={{ marginBottom: '20px', borderBottom: '2px solid #E5E7EB', paddingBottom: '15px' }}>
-        <h2 style={{ margin: '0 0 5px 0', color: '#1a1a1a', fontSize: '24px' }}>
+      <div style={{ marginBottom: '15px', borderBottom: '2px solid #E5E7EB', paddingBottom: '12px' }}>
+        <h2 style={{ margin: '0 0 5px 0', color: '#1a1a1a', fontSize: isMobile ? '18px' : '24px' }}>
           {sectorName} - Sector Aggregate Analysis
         </h2>
-        <p style={{ margin: 0, color: '#6B7280', fontSize: '14px' }}>
+        <p style={{ margin: 0, color: '#6B7280', fontSize: isMobile ? '12px' : '14px' }}>
           Composite metrics derived from {metrics.totalTickers} constituent tickers
         </p>
       </div>
@@ -333,8 +341,8 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       {/* Key Metrics Grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '15px',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: isMobile ? '10px' : '15px',
         marginBottom: '20px'
       }}>
         {/* Sector Health Score */}
@@ -413,9 +421,9 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       {/* Detailed Metrics */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        gap: '12px',
-        padding: '15px',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: isMobile ? '8px' : '12px',
+        padding: isMobile ? '10px' : '15px',
         background: '#F9FAFB',
         borderRadius: '6px'
       }}>
@@ -444,12 +452,12 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       {/* Interpretation Guide */}
       <div style={{
         marginTop: '15px',
-        padding: '12px',
+        padding: isMobile ? '10px' : '12px',
         background: '#EFF6FF',
         borderRadius: '6px',
         border: '1px solid #BFDBFE'
       }}>
-        <div style={{ fontSize: '13px', color: '#1E40AF', lineHeight: '1.6' }}>
+        <div style={{ fontSize: isMobile ? '12px' : '13px', color: '#1E40AF', lineHeight: '1.6' }}>
           <strong>💡 Interpretation:</strong>
           {metrics.breadthPercentage >= 50 ? (
             <span> High breadth ({metrics.breadthPercentage.toFixed(0)}%) suggests sector-wide pressure. This may indicate systemic issues or broader market correction affecting the entire {sectorName.toLowerCase()} sector.</span>
@@ -470,30 +478,30 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         overflow: 'hidden'
       }}>
         <div style={{
-          padding: '12px 15px',
+          padding: isMobile ? '8px 10px' : '12px 15px',
           background: '#F9FAFB',
           borderBottom: '2px solid #E5E7EB',
           fontWeight: '600',
-          fontSize: '14px',
+          fontSize: isMobile ? '12px' : '14px',
           color: '#374151'
         }}>
           📋 Aggregated Dip Performance by Ticker
         </div>
-        
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+
+        <div style={{ overflowX: isMobile ? 'auto' : 'visible' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Rank</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Ticker</th>
-                <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Company</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Status</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Dips</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Avg Depth</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Max Depth</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Dip Score</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Days in Dips</th>
-                <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>vs Benchmark</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Rank</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Ticker</th>
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280' }}>Company</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Status</th>
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Dips</th>}
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Avg Depth</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Max Depth</th>
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Dip Score</th>}
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>Total Days in Dips</th>}
+                {!isMobile && <th style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280' }}>vs Benchmark</th>}
               </tr>
             </thead>
             <tbody>
@@ -600,16 +608,16 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                             : (detail.totalDips > 0 ? '#FEF9C3' : 'white')  // Light yellow for recovered, white for no dips
                       }}
                     >
-                    <td style={{ padding: '10px', color: '#6B7280', fontWeight: '500' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#6B7280', fontWeight: '500' }}>
                       {index + 1}
                     </td>
-                    <td style={{ padding: '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace', fontSize: isMobile ? '12px' : 'inherit' }}>
                       {detail.ticker}
                     </td>
-                    <td style={{ padding: '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {!isMobile && <td style={{ padding: '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {detail.companyName}
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>
+                    </td>}
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right' }}>
                       {detail.isETF ? (
                         <span style={{ color: '#9CA3AF' }}>—</span>
                       ) : detail.hasOngoingDip ? (
@@ -647,45 +655,47 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151' }}>
+                    {!isMobile && <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151' }}>
                       {detail.isETF ? '—' : detail.totalDips}
-                    </td>
-                    <td style={{ 
-                      padding: '10px', 
-                      textAlign: 'right', 
+                    </td>}
+                    <td style={{
+                      padding: isMobile ? '6px' : '10px',
+                      textAlign: 'right',
                       fontWeight: '600',
-                      color: detail.avgDipDepth > 0.15 ? '#DC2626' : detail.avgDipDepth > 0.08 ? '#F59E0B' : '#059669'
+                      color: detail.avgDipDepth > 0.15 ? '#DC2626' : detail.avgDipDepth > 0.08 ? '#F59E0B' : '#059669',
+                      fontSize: isMobile ? '11px' : 'inherit'
                     }}>
                       {detail.avgDipDepth > 0 ? `${(detail.avgDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
-                    <td style={{ 
-                      padding: '10px', 
-                      textAlign: 'right', 
+                    <td style={{
+                      padding: isMobile ? '6px' : '10px',
+                      textAlign: 'right',
                       fontWeight: '600',
-                      color: detail.maxDipDepth > 0.20 ? '#DC2626' : detail.maxDipDepth > 0.10 ? '#F59E0B' : '#059669'
+                      color: detail.maxDipDepth > 0.20 ? '#DC2626' : detail.maxDipDepth > 0.10 ? '#F59E0B' : '#059669',
+                      fontSize: isMobile ? '11px' : 'inherit'
                     }}>
                       {detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
-                    <td style={{ 
-                      padding: '10px', 
-                      textAlign: 'right', 
+                    {!isMobile && <td style={{
+                      padding: '10px',
+                      textAlign: 'right',
                       fontWeight: '600',
                       color: detail.dipScore > 10 ? '#DC2626' : detail.dipScore > 5 ? '#F59E0B' : '#059669'
                     }}>
                       {detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—'}
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right', color: '#6B7280' }}>
+                    </td>}
+                    {!isMobile && <td style={{ padding: '10px', textAlign: 'right', color: '#6B7280' }}>
                       {detail.totalDipDays > 0 ? detail.totalDipDays : '—'}
-                    </td>
-                    <td style={{ 
-                      padding: '10px', 
+                    </td>}
+                    {!isMobile && <td style={{
+                      padding: '10px',
                       textAlign: 'right',
                       fontSize: '12px',
                       color: comparisonColor,
                       fontWeight: '500'
                     }}>
                       {breadthComparison}
-                    </td>
+                    </td>}
                   </tr>
                   </React.Fragment>
                 );
@@ -695,21 +705,21 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         </div>
         
         <div style={{
-          padding: '10px 15px',
+          padding: isMobile ? '8px 10px' : '10px 15px',
           background: '#F9FAFB',
           borderTop: '1px solid #E5E7EB',
-          fontSize: '12px',
+          fontSize: isMobile ? '10px' : '12px',
           color: '#6B7280',
           lineHeight: '1.6'
         }}>
-          💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker. 
-          <strong>📊 = ETF</strong> (shown with light blue background at top of table). 
+          💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker.
+          <strong>📊 = ETF</strong> (shown with light blue background at top of table).
           <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
-          <strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score. 
-          "Stock-specific" = ETFs had no dips. 
-          "X% worse/better" = stock's score is X% higher/lower than ETF average. 
-          "Similar" = within ±20% of ETF average. | 
-          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.
+          {!isMobile && <><strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
+          "Stock-specific" = ETFs had no dips.
+          "X% worse/better" = stock's score is X% higher/lower than ETF average.
+          "Similar" = within ±20% of ETF average. |
+          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.</>}
         </div>
       </div>
     </div>
