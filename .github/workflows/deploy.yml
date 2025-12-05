@@ -29,6 +29,15 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
+        env:
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+        continue-on-error: false
+        
+      - name: Retry install on failure
+        if: failure()
+        run: |
+          npm cache clean --force
+          npm ci --prefer-offline
         
       - name: Build
         run: npm run build
