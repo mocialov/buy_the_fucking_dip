@@ -6,9 +6,11 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "sync-data": "tsx scripts/sync-data.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "react": "^18.3.1",
