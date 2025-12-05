@@ -116,11 +116,16 @@ async function syncAllTickers() {
           synced_at: new Date().toISOString()
         }));
         
+        // Deduplicate by date (keep most recent entry per date)
+        const uniqueRecords = Array.from(
+          new Map(records.map(record => [record.date, record])).values()
+        );
+        
         // Upsert to Supabase
-        await upsertStockData(records);
+        await upsertStockData(uniqueRecords);
         
         successCount++;
-        console.log(`    ✅ Success: ${records.length} data points saved`);
+        console.log(`    ✅ Success: ${uniqueRecords.length} data points saved`);
         
         // Rate limiting: wait before next request
         if (processedCount < totalTickers) {
