@@ -9,6 +9,8 @@
     "test": "vitest"
   },
   "dependencies": {
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

@@ -5,6 +5,8 @@
 import React from 'react';
 import type { SectorAnalysis } from './SeriesInput';
 import type { TimeInterval } from '../dip/types';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface SectorAggregatePanelProps {
   sectorAnalyses: SectorAnalysis[];
@@ -132,14 +134,36 @@ function calculateSectorMetrics(
     // Process ALL dips for this ticker and aggregate into summary metrics
     const allDips = dips.map(dip => ({
       normalizedDepth: dip.baseline > 0 ? dip.depth / dip.baseline : 0,
+      startIndex: dip.start,
+      endIndex: dip.start + dip.width - 1,
       duration: dip.width,
       isOngoing: (dip.start + dip.width - 1) >= series.length - 3
     }));
-    
+
+    // Merge overlapping dip intervals to avoid double-counting days
+    const intervals = allDips
+      .map(d => [d.startIndex, d.endIndex] as [number, number])
+      .sort((a, b) => a[0] - b[0]);
+    const merged: Array<[number, number]> = [];
+    for (const [s, e] of intervals) {
+      if (merged.length === 0) {
+        merged.push([s, e]);
+      } else {
+        const last = merged[merged.length - 1];
+        if (s <= last[1] + 1) {
+          // overlap or contiguous
+          last[1] = Math.max(last[1], e);
+        } else {
+          merged.push([s, e]);
+        }
+      }
+    }
+    const totalUniqueDipDays = merged.reduce((sum, [s, e]) => sum + (e - s + 1), 0);
+
     // Calculate aggregated metrics
     const totalDips = allDips.length;
-    const avgDipDepth = totalDips > 0 
-      ? allDips.reduce((sum, d) => sum + d.normalizedDepth, 0) / totalDips 
+    const avgDipDepth = totalDips > 0
+      ? allDips.reduce((sum, d) => sum + d.normalizedDepth, 0) / totalDips
       : 0;
     const maxDipDepth = totalDips > 0
       ? Math.max(...allDips.map(d => d.normalizedDepth))
@@ -147,10 +171,10 @@ function calculateSectorMetrics(
     const avgDipDuration = totalDips > 0
       ? allDips.reduce((sum, d) => sum + d.duration, 0) / totalDips
       : 0;
-    const totalDipDays = allDips.reduce((sum, d) => sum + d.duration, 0);
-    
+    const totalDipDays = totalUniqueDipDays;
+
     // Dip Score: combines frequency, severity, and time spent in dips
-    // Formula: (# of dips) × (avg depth %) × (total days in dips / total days analyzed)
+    // Formula: (# of dips) × (avg depth %) × (unique days in dips / total days analyzed)
     const dipScore = (totalDips * avgDipDepth * (totalDipDays / series.length)) * 100;
     
     // Track statistics for ongoing dips only (for aggregate sector metrics)
@@ -319,6 +343,144 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   const metrics = calculateSectorMetrics(sectorAnalyses, selectedInterval);
   const healthColor = getHealthColor(metrics.sectorHealthScore);
   const breadthColor = getBreadthColor(metrics.breadthPercentage);
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Add title
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${sectorName} - Aggregated Dip Performance`, pageWidth / 2, 15, { align: 'center' });
+    
+    // Add subtitle with date
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const currentDate = new Date().toLocaleDateString();
+    doc.text(`Generated on ${currentDate} | Interval: ${selectedInterval}`, pageWidth / 2, 22, { align: 'center' });
+    
+    // Prepare table data
+    const tableData = metrics.tickerDetails.map((detail, index) => {
+      let status = '';
+      if (detail.isETF) {
+        status = '—';
+      } else if (detail.hasOngoingDip) {
+        status = 'ONGOING';
+      } else if (detail.totalDips > 0) {
+        status = 'RECOVERED';
+      } else {
+        status = 'NO DIP';
+      }
+      
+      // Calculate benchmark comparison
+      let benchmark = '';
+      if (!detail.isETF && detail.totalDips > 0) {
+        const etfScores = metrics.tickerDetails.filter(d => d.isETF && d.totalDips > 0);
+        const etfAvgScore = etfScores.length > 0
+          ? etfScores.reduce((sum, d) => sum + d.dipScore, 0) / etfScores.length
+          : 0;
+        
+        if (etfAvgScore === 0) {
+          benchmark = 'Stock-specific';
+        } else {
+          const comparison = ((detail.dipScore - etfAvgScore) / etfAvgScore) * 100;
+          if (comparison > 20) {
+            benchmark = `${comparison.toFixed(0)}% worse`;
+          } else if (comparison < -20) {
+            benchmark = `${Math.abs(comparison).toFixed(0)}% better`;
+          } else {
+            benchmark = 'Similar';
+          }
+        }
+      } else {
+        benchmark = '—';
+      }
+      
+      return [
+        (index + 1).toString(),
+        detail.ticker,
+        detail.companyName,
+        status,
+        detail.isETF ? '—' : detail.totalDips.toString(),
+        detail.avgDipDepth > 0 ? `${(detail.avgDipDepth * 100).toFixed(1)}%` : '—',
+        detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—',
+        detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—',
+        detail.totalDipDays > 0 ? detail.totalDipDays.toString() : '—',
+        benchmark
+      ];
+    });
+    
+    // Create table
+    autoTable(doc, {
+      startY: 28,
+      head: [[
+        'Rank',
+        'Ticker',
+        'Company',
+        'Status',
+        'Total Dips',
+        'Avg Depth',
+        'Max Depth',
+        'Dip Score',
+        'Total Days',
+        'vs Benchmark'
+      ]],
+      body: tableData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [107, 114, 128],
+        fontSize: 8,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 7
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'left', cellWidth: 18, fontStyle: 'bold' },
+        2: { halign: 'left', cellWidth: 40 },
+        3: { halign: 'center', cellWidth: 20 },
+        4: { halign: 'center', cellWidth: 16 },
+        5: { halign: 'right', cellWidth: 16 },
+        6: { halign: 'right', cellWidth: 16 },
+        7: { halign: 'right', cellWidth: 16 },
+        8: { halign: 'right', cellWidth: 16 },
+        9: { halign: 'center', cellWidth: 22 }
+      },
+      didDrawCell: (data) => {
+        // Color-code rows based on ETF/status
+        if (data.section === 'body' && data.column.index === 0) {
+          const detail = metrics.tickerDetails[data.row.index];
+          if (detail.isETF) {
+            doc.setFillColor(239, 246, 255); // Light blue for ETFs
+          } else if (detail.hasOngoingDip) {
+            doc.setFillColor(254, 242, 242); // Light red for ongoing
+          } else if (detail.totalDips > 0) {
+            doc.setFillColor(254, 249, 195); // Light yellow for recovered
+          }
+        }
+      },
+      margin: { top: 28, left: 7, right: 7 },
+      didDrawPage: () => {
+        // Add legend at the bottom of each page
+        const pageHeight = doc.internal.pageSize.getHeight();
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(107, 114, 128);
+        
+        const legendY = pageHeight - 20;
+        doc.text('Legend:', 7, legendY);
+        doc.text('• Dip Score = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100', 7, legendY + 4);
+        doc.text('• vs Benchmark = compares stock\'s Dip Score to average ETF Dip Score', 7, legendY + 8);
+        doc.text('• "Stock-specific" = ETFs had no dips | "X% worse/better" = stock\'s score is X% higher/lower than ETF avg', 7, legendY + 12);
+        doc.text('• "Similar" = within ±20% of ETF average', 7, legendY + 16);
+      }
+    });
+    
+    // Save the PDF
+    doc.save(`${sectorName}_Dip_Performance_${currentDate.replace(/\//g, '-')}.pdf`);
+  };
 
   return (
     <div style={{
@@ -711,16 +873,45 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           borderTop: '1px solid #E5E7EB',
           fontSize: isMobile ? '10px' : '12px',
           color: '#6B7280',
-          lineHeight: '1.6'
+          lineHeight: '1.6',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '10px'
         }}>
-          💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker.
-          <strong>📊 = ETF</strong> (shown with light blue background at top of table).
-          <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
-          <strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
-          "Stock-specific" = ETFs had no dips.
-          "X% worse/better" = stock's score is X% higher/lower than ETF average.
-          "Similar" = within ±20% of ETF average. |
-          <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.
+          <div>
+            💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker.
+            <strong>📊 = ETF</strong> (shown with light blue background at top of table).
+            <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
+            <strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
+            "Stock-specific" = ETFs had no dips.
+            "X% worse/better" = stock's score is X% higher/lower than ETF average.
+            "Similar" = within ±20% of ETF average. |
+            <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.
+          </div>
+          <button
+            onClick={exportToPDF}
+            style={{
+              padding: '8px 16px',
+              background: '#3B82F6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#2563EB'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#3B82F6'}
+          >
+            📄 Export to PDF
+          </button>
         </div>
       </div>
     </div>

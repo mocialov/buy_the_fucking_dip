@@ -30,6 +30,8 @@ function App() {
   const [userApiKey, setUserApiKey] = useState<string>(() => getUserApiKey() || DEMO_API_KEY);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isControlPanelMinimized, setIsControlPanelMinimized] = useState(false);
+  const [isSectorDropdownOpen, setIsSectorDropdownOpen] = useState(false);
+  const [isIntervalDropdownOpen, setIsIntervalDropdownOpen] = useState(false);
 
   // Save user API key to localStorage when it changes
   useEffect(() => {
@@ -330,16 +332,56 @@ function App() {
               </div>
               <div className="control-grid">
                 <span className="control-label">Sector:</span>
+                
+                {/* Native select for mobile */}
                 <select
                   value={selectedSector}
                   onChange={(e) => setSelectedSector(e.target.value)}
-                  className="control-select"
+                  className="control-select native-select"
                 >
                   <option value="">-- Select a sector --</option>
                   {Object.keys(MARKET_SECTORS).map(sector => (
                     <option key={sector} value={sector}>{sector}</option>
                   ))}
                 </select>
+                
+                {/* Custom dropdown for desktop */}
+                <div className="custom-dropdown">
+                  <button
+                    onClick={() => setIsSectorDropdownOpen(!isSectorDropdownOpen)}
+                    className="control-select"
+                  >
+                    {selectedSector || '-- Select a sector --'}
+                  </button>
+                  {isSectorDropdownOpen && (
+                    <>
+                      <div className="dropdown-backdrop" onClick={() => setIsSectorDropdownOpen(false)} />
+                      <div className="dropdown-menu">
+                        <div
+                          className={`dropdown-item ${!selectedSector ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSelectedSector('');
+                            setIsSectorDropdownOpen(false);
+                          }}
+                        >
+                          -- Select a sector --
+                        </div>
+                        {Object.keys(MARKET_SECTORS).map(sector => (
+                          <div
+                            key={sector}
+                            className={`dropdown-item ${selectedSector === sector ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSelectedSector(sector);
+                              setIsSectorDropdownOpen(false);
+                            }}
+                          >
+                            {sector}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 <button
                   onClick={analyzeSector}
@@ -359,15 +401,46 @@ function App() {
                 {sectorAnalyses.length > 0 && (
                   <>
                     <span className="control-label" style={{ marginLeft: '16px' }}>Interval:</span>
+                    
+                    {/* Native select for mobile */}
                     <select
                       value={selectedTimeInterval}
                       onChange={(e) => setSelectedTimeInterval(e.target.value as TimeInterval)}
-                      className="control-select"
+                      className="control-select native-select"
                     >
                       {Object.entries(TIME_INTERVALS).map(([key, { label }]) => (
                         <option key={key} value={key}>{label}</option>
                       ))}
                     </select>
+                    
+                    {/* Custom dropdown for desktop */}
+                    <div className="custom-dropdown">
+                      <button
+                        onClick={() => setIsIntervalDropdownOpen(!isIntervalDropdownOpen)}
+                        className="control-select"
+                      >
+                        {TIME_INTERVALS[selectedTimeInterval].label}
+                      </button>
+                      {isIntervalDropdownOpen && (
+                        <>
+                          <div className="dropdown-backdrop" onClick={() => setIsIntervalDropdownOpen(false)} />
+                          <div className="dropdown-menu">
+                            {Object.entries(TIME_INTERVALS).map(([key, { label }]) => (
+                              <div
+                                key={key}
+                                className={`dropdown-item ${selectedTimeInterval === key ? 'selected' : ''}`}
+                                onClick={() => {
+                                  setSelectedTimeInterval(key as TimeInterval);
+                                  setIsIntervalDropdownOpen(false);
+                                }}
+                              >
+                                {label}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </>
                 )}
 
