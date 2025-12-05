@@ -150,11 +150,10 @@ async function syncAllTickers() {
   console.log('='.repeat(60));
   
   if (errorCount > 0) {
-    console.warn(`\n⚠️  ${errorCount} ticker(s) failed to sync`);
-    process.exit(1);
+    console.warn(`\n⚠️  ${errorCount} ticker(s) failed to sync (continuing anyway)`);
   }
   
-  console.log('\n✨ Sync completed successfully!');
+  console.log('\n✨ Sync completed!');
 }
 
 // Run the sync
