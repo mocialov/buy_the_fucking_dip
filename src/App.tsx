@@ -424,18 +424,6 @@ function App() {
                 )}
 
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label className="control-label" style={{ whiteSpace: 'nowrap' }}>
-                    API Key:
-                  </label>
-                  <input
-                    type="text"
-                    value={userApiKey}
-                    onChange={(e) => setUserApiKey(e.target.value)}
-                    placeholder={DEMO_API_KEY}
-                    className="api-key-input"
-                    title="Enter your Twelve Data API key (or use the demo key)"
-                  />
-
                   <button
                     onClick={() => setShowAbout(!showAbout)}
                     className="btn btn-icon"
@@ -463,6 +451,24 @@ function App() {
               </div>
               
               <div className="modal-content">
+                <div style={{ marginBottom: '24px', padding: '16px', backgroundColor: 'var(--surface-light)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                    API Key:
+                  </label>
+                  <input
+                    type="text"
+                    value={userApiKey}
+                    onChange={(e) => setUserApiKey(e.target.value)}
+                    placeholder={DEMO_API_KEY}
+                    className="api-key-input"
+                    title="Enter your Twelve Data API key (or use the demo key)"
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '0.9375rem' }}
+                  />
+                  <p style={{ margin: '8px 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    Enter your Twelve Data API key or use the demo key. Your key is saved in your browser.
+                  </p>
+                </div>
+                
                 <p>
                   This tool implements a robust dip detection algorithm for 1-D time series.
                   A <strong>dip</strong> is a temporally coherent downward excursion relative to
