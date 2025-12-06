@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { findAllDips } from './dip/detectDip';
-import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchStockDataHybrid } from './components/SeriesInput';
+import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchMultipleStockDataHybrid, fetchStockDataHybrid } from './components/SeriesInput';
 import { DipChart } from './components/DipChart';
 import { DipResults } from './components/DipResults';
 import { RawDataDisplay } from './components/RawDataDisplay';
@@ -81,65 +81,60 @@ function App() {
     const companies = MARKET_SECTORS[selectedSector as keyof typeof MARKET_SECTORS];
     setLoadingProgress({ current: 0, total: companies.length });
 
-    const analyses: SectorAnalysis[] = [];
-    const { key: apiKey } = getActiveApiKey(); // Use configured API key with fallback
-
-    for (let i = 0; i < companies.length; i++) {
-      const company = companies[i];
-      setLoadingProgress({ current: i + 1, total: companies.length });
-
-      try {
-        // Add delay to respect API rate limits only when fetching from API
-        // (Supabase fetches don't need rate limiting)
-        if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second between calls
-        }
-
-        // Use hybrid fetch: Supabase first, then API fallback
-        const fullSeries = await fetchStockDataHybrid(company.ticker, apiKey);
-        
-        // Create analyses for each time interval
-        const intervalAnalyses: import('./components/SeriesInput').IntervalAnalysis[] = Object.keys(TIME_INTERVALS).map(intervalKey => {
-          const interval = intervalKey as TimeInterval;
-          const days = TIME_INTERVALS[interval].days;
-          
-          // Slice the most recent data for this interval
-          const slicedSeries = fullSeries.slice(-days);
-          
-          // Run dip analysis on the values
-          const values = slicedSeries.map((p: DataPoint) => p.value);
-          const dips = findAllDips(values, {
-            k: 0.7,
-            minWidth: 3,
-            multiScale: true,
-          });
-          
-          return {
-            interval,
-            series: slicedSeries,
-            dips
-          };
-        });
-        
-        analyses.push({
-          ticker: company.ticker,
-          companyName: company.name,
-          fullSeries,
-          intervalAnalyses,
-          isETF: company.isETF
-        });
-      } catch (error) {
-        console.error(`Failed to load ${company.ticker}:`, error);
-        analyses.push({
+    const { key: apiKey } = getActiveApiKey();
+    
+    // Batch fetch all tickers at once (much faster!)
+    const tickers = companies.map(c => c.ticker);
+    const stockDataMap = await fetchMultipleStockDataHybrid(tickers, apiKey);
+    
+    // Process each company with the fetched data
+    const analyses: SectorAnalysis[] = companies.map((company) => {
+      const fullSeries = stockDataMap.get(company.ticker);
+      
+      setLoadingProgress(prev => ({ ...prev, current: prev.current + 1 }));
+      
+      if (!fullSeries || fullSeries.length === 0) {
+        return {
           ticker: company.ticker,
           companyName: company.name,
           fullSeries: [],
           intervalAnalyses: [],
-          error: error instanceof Error ? error.message : 'Failed to load data',
+          error: 'No data available',
           isETF: company.isETF
-        });
+        };
       }
-    }
+      
+      // Create analyses for each time interval
+      const intervalAnalyses: import('./components/SeriesInput').IntervalAnalysis[] = Object.keys(TIME_INTERVALS).map(intervalKey => {
+        const interval = intervalKey as TimeInterval;
+        const days = TIME_INTERVALS[interval].days;
+        
+        // Slice the most recent data for this interval
+        const slicedSeries = fullSeries.slice(-days);
+        
+        // Run dip analysis on the values
+        const values = slicedSeries.map((p: DataPoint) => p.value);
+        const dips = findAllDips(values, {
+          k: 0.7,
+          minWidth: 3,
+          multiScale: true,
+        });
+        
+        return {
+          interval,
+          series: slicedSeries,
+          dips
+        };
+      });
+      
+      return {
+        ticker: company.ticker,
+        companyName: company.name,
+        fullSeries,
+        intervalAnalyses,
+        isETF: company.isETF
+      };
+    });
 
     handleSectorAnalysis(analyses, selectedSector);
     setIsLoadingSector(false);
@@ -173,7 +168,7 @@ function App() {
         const slicedSeries = fullSeries.slice(-days);
         
         // Run dip analysis on the values
-        const values = slicedSeries.map(p => p.value);
+        const values = slicedSeries.map((p: DataPoint) => p.value);
         const dips = findAllDips(values, {
           k: 0.7,
           minWidth: 3,

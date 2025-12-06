@@ -7,7 +7,7 @@ import { InteractiveSeriesChart } from './InteractiveSeriesChart';
 import type { FindAllDipsOptions, TimeInterval, DataPoint } from '../dip/types';
 import { TIME_INTERVALS } from '../dip/types';
 import { getActiveApiKey } from '../config/apiConfig';
-import { fetchStockDataFromSupabase, isSupabaseAvailable } from '../services/supabaseService';
+import { fetchStockDataFromSupabase, fetchMultipleStockDataFromSupabase, isSupabaseAvailable } from '../services/supabaseService';
 
 interface SeriesInputProps {
   onAnalyze: (series: number[] | DataPoint[], options: FindAllDipsOptions) => void;
@@ -417,11 +417,9 @@ export async function fetchStockData(symbol: string, apiKey?: string): Promise<D
 export async function fetchStockDataHybrid(symbol: string, apiKey?: string): Promise<DataPoint[]> {
   // Try Supabase first if available
   if (isSupabaseAvailable()) {
-    console.log(`Attempting to fetch ${symbol} from Supabase...`);
     const supabaseData = await fetchStockDataFromSupabase(symbol);
     
     if (supabaseData && supabaseData.length > 0) {
-      console.log(`✓ Using cached data from Supabase for ${symbol}`);
       return supabaseData;
     }
   }
@@ -429,6 +427,52 @@ export async function fetchStockDataHybrid(symbol: string, apiKey?: string): Pro
   // Fallback to Twelve Data API
   console.log(`${symbol} not in cache, fetching from Twelve Data API...`);
   return fetchStockData(symbol, apiKey);
+}
+
+/**
+ * Batch hybrid fetch: Optimized for loading multiple tickers at once
+ * Fetches all available tickers from Supabase in one query, then fetches missing ones from API
+ */
+export async function fetchMultipleStockDataHybrid(
+  symbols: string[], 
+  apiKey?: string
+): Promise<Map<string, DataPoint[]>> {
+  const result = new Map<string, DataPoint[]>();
+  
+  // Try Supabase first for all tickers (single query!)
+  if (isSupabaseAvailable()) {
+    const cachedData = await fetchMultipleStockDataFromSupabase(symbols);
+    cachedData.forEach((data, ticker) => {
+      result.set(ticker, data);
+    });
+  }
+  
+  // Find missing tickers
+  const missingTickers = symbols.filter(symbol => !result.has(symbol));
+  
+  if (missingTickers.length > 0) {
+    console.log(`Fetching ${missingTickers.length} missing tickers from API:`, missingTickers);
+    
+    // Fetch missing tickers from API in parallel
+    const apiPromises = missingTickers.map(async (symbol) => {
+      try {
+        const data = await fetchStockData(symbol, apiKey);
+        return { symbol, data };
+      } catch (error) {
+        console.error(`Failed to fetch ${symbol}:`, error);
+        return { symbol, data: null };
+      }
+    });
+    
+    const apiResults = await Promise.all(apiPromises);
+    apiResults.forEach(({ symbol, data }) => {
+      if (data) {
+        result.set(symbol, data);
+      }
+    });
+  }
+  
+  return result;
 }
 
 export const SeriesInput: React.FC<SeriesInputProps> = ({ onAnalyze, selectedInterval = '12m' }) => {

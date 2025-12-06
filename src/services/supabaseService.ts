@@ -37,8 +37,6 @@ export async function fetchStockDataFromSupabase(ticker: string): Promise<DataPo
   }
 
   try {
-    console.log(`Checking Supabase for ${ticker}...`);
-    
     const { data, error } = await supabase
       .from('stock_data')
       .select('date, close_price')
@@ -51,7 +49,6 @@ export async function fetchStockDataFromSupabase(ticker: string): Promise<DataPo
     }
 
     if (!data || data.length === 0) {
-      console.log(`${ticker} not found in Supabase`);
       return null;
     }
 
@@ -61,12 +58,70 @@ export async function fetchStockDataFromSupabase(ticker: string): Promise<DataPo
       value: parseFloat(row.close_price)
     }));
 
-    console.log(`✓ Loaded ${dataPoints.length} days of ${ticker} data from Supabase`);
+    console.log(`✓ Loaded ${dataPoints.length} days of ${ticker} from Supabase`);
     return dataPoints;
 
   } catch (error) {
     console.error(`Failed to fetch ${ticker} from Supabase:`, error);
     return null;
+  }
+}
+
+/**
+ * Fetch stock data for multiple tickers at once (batch query)
+ * Much faster than calling fetchStockDataFromSupabase multiple times
+ * Returns a Map of ticker -> DataPoint[]
+ */
+export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Promise<Map<string, DataPoint[]>> {
+  const result = new Map<string, DataPoint[]>();
+  
+  if (!supabase || tickers.length === 0) {
+    return result;
+  }
+
+  try {
+    console.log(`Batch fetching ${tickers.length} tickers from Supabase...`);
+    
+    const { data, error } = await supabase
+      .from('stock_data')
+      .select('ticker, date, close_price')
+      .in('ticker', tickers)
+      .order('date', { ascending: true });
+
+    if (error) {
+      console.error('Supabase batch fetch error:', error);
+      return result;
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No data found for any tickers');
+      return result;
+    }
+
+    // Group data by ticker
+    const grouped = new Map<string, any[]>();
+    data.forEach((row: any) => {
+      if (!grouped.has(row.ticker)) {
+        grouped.set(row.ticker, []);
+      }
+      grouped.get(row.ticker)!.push(row);
+    });
+
+    // Convert to DataPoint format
+    grouped.forEach((rows, ticker) => {
+      const dataPoints: DataPoint[] = rows.map((row: any) => ({
+        date: new Date(row.date),
+        value: parseFloat(row.close_price)
+      }));
+      result.set(ticker, dataPoints);
+    });
+
+    console.log(`✓ Batch loaded ${result.size}/${tickers.length} tickers from Supabase`);
+    return result;
+
+  } catch (error) {
+    console.error('Failed batch fetch from Supabase:', error);
+    return result;
   }
 }
 
