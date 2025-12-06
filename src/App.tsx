@@ -29,7 +29,7 @@ function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string>(() => getUserApiKey() || DEMO_API_KEY);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isControlPanelMinimized, setIsControlPanelMinimized] = useState(false);
+  const [isToolbarCompact, setIsToolbarCompact] = useState(false);
   const [isSectorDropdownOpen, setIsSectorDropdownOpen] = useState(false);
   const [isIntervalDropdownOpen, setIsIntervalDropdownOpen] = useState(false);
 
@@ -37,6 +37,20 @@ function App() {
   useEffect(() => {
     saveUserApiKey(userApiKey);
   }, [userApiKey]);
+
+  // Auto-analyze when sector is selected
+  useEffect(() => {
+    if (selectedSector && !isLoadingSector) {
+      analyzeSector();
+    }
+  }, [selectedSector]);
+
+  // Auto-analyze when sector is selected
+  useEffect(() => {
+    if (selectedSector && !isLoadingSector) {
+      analyzeSector();
+    }
+  }, [selectedSector]);
 
   // Auto-rotate images every 5 seconds
   useEffect(() => {
@@ -244,93 +258,48 @@ function App() {
           </div>
         )}
 
-        {/* Control Panel (Sector Selector) */}
-        <div className={`control-panel ${sectorAnalyses.length > 0 ? 'fixed' : ''} ${isControlPanelMinimized ? 'minimized' : ''}`} style={{
-          display: isControlPanelMinimized ? 'flex' : 'block',
-          flexDirection: isControlPanelMinimized ? 'row' : 'row',
-          alignItems: isControlPanelMinimized ? 'center' : 'stretch',
-          gap: isControlPanelMinimized ? '8px' : '0',
-          padding: isControlPanelMinimized ? '12px' : 'var(--spacing-lg)',
-          minHeight: isControlPanelMinimized ? 'auto' : 'unset'
-        }}>
-          {isControlPanelMinimized ? (
-            <>
-              <button
-                onClick={() => setIsControlPanelMinimized(false)}
-                className="btn btn-icon"
-                title="Expand control panel"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  padding: '0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ⚙️
-              </button>
-              <button
-                onClick={() => setShowAbout(!showAbout)}
-                className="btn btn-icon"
-                title="About Dip Detection"
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  padding: '0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                ?
-              </button>
-            </>
-          ) : (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: 'var(--text-primary)' }}>Analysis Controls</h3>
-                {sectorAnalyses.length > 0 && (
-                  <button
-                    onClick={() => setIsControlPanelMinimized(true)}
-                    className="btn btn-icon"
-                    title="Minimize control panel"
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      padding: '0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: '0'
-                    }}
-                  >
-                    −
-                  </button>
-                )}
-              </div>
-              <div className="control-grid">
-                <span className="control-label">Sector:</span>
+        {/* Modern Toolbar */}
+        <div className={`toolbar ${sectorAnalyses.length > 0 ? 'sticky' : ''} ${isToolbarCompact ? 'compact' : ''}`}>
+          <div className="toolbar-content">
+            {/* Left Section: Branding & Breadcrumbs */}
+            <div className="toolbar-section toolbar-left">
+              <div className="toolbar-brand">📊 Dip Detector</div>
+              {sectorAnalyses.length > 0 && !isToolbarCompact && (
+                <div className="toolbar-breadcrumbs">
+                  <span className="breadcrumb-separator">›</span>
+                  <span className="breadcrumb-item">{currentSectorName}</span>
+                  <span className="breadcrumb-separator">›</span>
+                  <span className="breadcrumb-item">{TIME_INTERVALS[selectedTimeInterval].label}</span>
+                  <span className="breadcrumb-count">({sectorAnalyses.length})</span>
+                </div>
+              )}
+            </div>
+
+            {/* Center Section: Main Controls */}
+            {!isToolbarCompact && (
+              <div className="toolbar-section toolbar-center">
+              <div className="control-group">
+                <label className="control-label-inline">Sector</label>
                 
                 {/* Native select for mobile */}
                 <select
                   value={selectedSector}
                   onChange={(e) => setSelectedSector(e.target.value)}
-                  className="control-select native-select"
+                  className="toolbar-select native-select"
                 >
-                  <option value="">-- Select a sector --</option>
+                  <option value="">Select sector...</option>
                   {Object.keys(MARKET_SECTORS).map(sector => (
                     <option key={sector} value={sector}>{sector}</option>
                   ))}
                 </select>
                 
                 {/* Custom dropdown for desktop */}
-                <div className="custom-dropdown">
+                <div className={`custom-dropdown ${isSectorDropdownOpen ? 'active' : ''}`}>
                   <button
                     onClick={() => setIsSectorDropdownOpen(!isSectorDropdownOpen)}
-                    className="control-select"
+                    className="toolbar-select"
                   >
-                    {selectedSector || '-- Select a sector --'}
+                    {selectedSector || 'Select sector...'}
                   </button>
                   {isSectorDropdownOpen && (
                     <>
@@ -343,7 +312,7 @@ function App() {
                             setIsSectorDropdownOpen(false);
                           }}
                         >
-                          -- Select a sector --
+                          Select sector...
                         </div>
                         {Object.keys(MARKET_SECTORS).map(sector => (
                           <div
@@ -361,31 +330,18 @@ function App() {
                     </>
                   )}
                 </div>
+              </div>
 
-                <button
-                  onClick={analyzeSector}
-                  disabled={!selectedSector || isLoadingSector}
-                  className="btn btn-primary"
-                >
-                  {isLoadingSector ? (
-                    <>
-                      <span className="loading-spinner"></span>
-                      {loadingProgress.current}/{loadingProgress.total}...
-                    </>
-                  ) : (
-                    '🔍 Analyze'
-                  )}
-                </button>
-
-                {sectorAnalyses.length > 0 && (
-                  <>
-                    <span className="control-label" style={{ marginLeft: '16px' }}>Interval:</span>
+              {sectorAnalyses.length > 0 && (
+                <>
+                  <div className="control-group">
+                    <label className="control-label-inline">Period</label>
                     
                     {/* Native select for mobile */}
                     <select
                       value={selectedTimeInterval}
                       onChange={(e) => setSelectedTimeInterval(e.target.value as TimeInterval)}
-                      className="control-select native-select"
+                      className="toolbar-select native-select"
                     >
                       {Object.entries(TIME_INTERVALS).map(([key, { label }]) => (
                         <option key={key} value={key}>{label}</option>
@@ -393,10 +349,10 @@ function App() {
                     </select>
                     
                     {/* Custom dropdown for desktop */}
-                    <div className="custom-dropdown">
+                    <div className={`custom-dropdown ${isIntervalDropdownOpen ? 'active' : ''}`}>
                       <button
                         onClick={() => setIsIntervalDropdownOpen(!isIntervalDropdownOpen)}
-                        className="control-select"
+                        className="toolbar-select"
                       >
                         {TIME_INTERVALS[selectedTimeInterval].label}
                       </button>
@@ -420,21 +376,32 @@ function App() {
                         </>
                       )}
                     </div>
-                  </>
-                )}
+                  </div>
+                </>
+              )}
+            </div>
+            )}
 
-                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button
-                    onClick={() => setShowAbout(!showAbout)}
-                    className="btn btn-icon"
-                    title="About Dip Detection"
-                  >
-                    ?
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+            {/* Right Section: Settings & Actions */}
+            <div className="toolbar-section toolbar-right">
+              {sectorAnalyses.length > 0 && (
+                <button
+                  onClick={() => setIsToolbarCompact(!isToolbarCompact)}
+                  className="btn btn-ghost toolbar-btn-icon toolbar-toggle"
+                  title={isToolbarCompact ? 'Expand toolbar' : 'Collapse toolbar'}
+                >
+                  {isToolbarCompact ? '☰' : '×'}
+                </button>
+              )}
+              <button
+                onClick={() => setShowAbout(!showAbout)}
+                className="btn btn-ghost toolbar-btn-icon"
+                title="About & Settings"
+              >
+                ⚙
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* About Popup Modal */}
