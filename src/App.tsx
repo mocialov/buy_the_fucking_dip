@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { findAllDips } from './dip/detectDip';
-import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchStockData } from './components/SeriesInput';
+import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchStockDataHybrid } from './components/SeriesInput';
 import { DipChart } from './components/DipChart';
 import { DipResults } from './components/DipResults';
 import { RawDataDisplay } from './components/RawDataDisplay';
@@ -89,12 +89,14 @@ function App() {
       setLoadingProgress({ current: i + 1, total: companies.length });
 
       try {
-        // Add delay to respect API rate limits (60 calls per minute for free tier)
+        // Add delay to respect API rate limits only when fetching from API
+        // (Supabase fetches don't need rate limiting)
         if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 10000)); // 10 seconds between calls
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second between calls
         }
 
-        const fullSeries = await fetchStockData(company.ticker, apiKey);
+        // Use hybrid fetch: Supabase first, then API fallback
+        const fullSeries = await fetchStockDataHybrid(company.ticker, apiKey);
         
         // Create analyses for each time interval
         const intervalAnalyses: import('./components/SeriesInput').IntervalAnalysis[] = Object.keys(TIME_INTERVALS).map(intervalKey => {
@@ -159,26 +161,8 @@ function App() {
     try {
       const { key: apiKey } = getActiveApiKey(); // Use configured API key with fallback
       
-      // Fetch stock data
-      const response = await fetch(
-        `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=5000&apikey=${apiKey}`
-      );
-      const data = await response.json();
-
-      if (data.status === 'error') {
-        throw new Error(data.message || 'Failed to fetch stock data');
-      }
-
-      if (!data.values || data.values.length === 0) {
-        throw new Error('No data returned from API');
-      }
-
-      const fullSeries: DataPoint[] = data.values
-        .reverse()
-        .map((item: { datetime: string; close: string }) => ({
-          date: new Date(item.datetime),
-          value: parseFloat(item.close)
-        }));
+      // Use hybrid fetch: Supabase first, then API fallback
+      const fullSeries = await fetchStockDataHybrid(ticker, apiKey);
       
       // Create analyses for each time interval
       const intervalAnalyses: import('./components/SeriesInput').IntervalAnalysis[] = Object.keys(TIME_INTERVALS).map(intervalKey => {

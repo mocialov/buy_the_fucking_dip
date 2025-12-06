@@ -11,6 +11,20 @@ export const DEMO_API_KEY = '1e84c56991a24d25ba629f833087c00d';
 const STORAGE_KEY = 'twelvedata_api_key';
 
 /**
+ * Get Supabase configuration from environment variables
+ */
+export function getSupabaseConfig(): { url: string; anonKey: string } | null {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (url && anonKey) {
+    return { url, anonKey };
+  }
+  
+  return null;
+}
+
+/**
  * Get API key from environment variable (.env.local)
  * Only available to developers who have .env.local file
  */

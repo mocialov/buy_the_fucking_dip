@@ -7,6 +7,7 @@ import { InteractiveSeriesChart } from './InteractiveSeriesChart';
 import type { FindAllDipsOptions, TimeInterval, DataPoint } from '../dip/types';
 import { TIME_INTERVALS } from '../dip/types';
 import { getActiveApiKey } from '../config/apiConfig';
+import { fetchStockDataFromSupabase, isSupabaseAvailable } from '../services/supabaseService';
 
 interface SeriesInputProps {
   onAnalyze: (series: number[] | DataPoint[], options: FindAllDipsOptions) => void;
@@ -407,6 +408,27 @@ export async function fetchStockData(symbol: string, apiKey?: string): Promise<D
     console.error(`Failed to fetch ${symbol}:`, error);
     throw error;
   }
+}
+
+/**
+ * Hybrid fetch: Try Supabase first, fallback to Twelve Data API
+ * This optimizes API usage by using cached data when available
+ */
+export async function fetchStockDataHybrid(symbol: string, apiKey?: string): Promise<DataPoint[]> {
+  // Try Supabase first if available
+  if (isSupabaseAvailable()) {
+    console.log(`Attempting to fetch ${symbol} from Supabase...`);
+    const supabaseData = await fetchStockDataFromSupabase(symbol);
+    
+    if (supabaseData && supabaseData.length > 0) {
+      console.log(`✓ Using cached data from Supabase for ${symbol}`);
+      return supabaseData;
+    }
+  }
+  
+  // Fallback to Twelve Data API
+  console.log(`${symbol} not in cache, fetching from Twelve Data API...`);
+  return fetchStockData(symbol, apiKey);
 }
 
 export const SeriesInput: React.FC<SeriesInputProps> = ({ onAnalyze, selectedInterval = '12m' }) => {
