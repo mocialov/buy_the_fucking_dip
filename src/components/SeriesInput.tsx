@@ -94,11 +94,15 @@ export const MARKET_SECTORS = {
     { ticker: 'GOOGL', name: 'Alphabet Inc.', isETF: false },
     { ticker: 'NVDA', name: 'NVIDIA Corporation', isETF: false },
     { ticker: 'META', name: 'Meta Platforms', isETF: false },
-    { ticker: 'TSLA', name: 'Tesla Inc.', isETF: false },
     { ticker: 'AVGO', name: 'Broadcom Inc.', isETF: false },
     { ticker: 'ORCL', name: 'Oracle Corporation', isETF: false },
     { ticker: 'CSCO', name: 'Cisco Systems', isETF: false },
     { ticker: 'ADBE', name: 'Adobe Inc.', isETF: false },
+    { ticker: 'CRM', name: 'Salesforce Inc.', isETF: false },
+    { ticker: 'INTC', name: 'Intel Corporation', isETF: false },
+    { ticker: 'AMD', name: 'Advanced Micro Devices', isETF: false },
+    { ticker: 'QCOM', name: 'Qualcomm Inc.', isETF: false },
+    { ticker: 'IBM', name: 'IBM Corporation', isETF: false },
   ],
   'Financial Services': [
     {
@@ -126,6 +130,10 @@ export const MARKET_SECTORS = {
     { ticker: 'SCHW', name: 'Charles Schwab', isETF: false },
     { ticker: 'AXP', name: 'American Express', isETF: false },
     { ticker: 'USB', name: 'U.S. Bancorp', isETF: false },
+    { ticker: 'V', name: 'Visa Inc.', isETF: false },
+    { ticker: 'MA', name: 'Mastercard Inc.', isETF: false },
+    { ticker: 'PYPL', name: 'PayPal Holdings', isETF: false },
+    { ticker: 'SPGI', name: 'S&P Global Inc.', isETF: false },
   ],
   'Healthcare': [
     {
@@ -141,13 +149,14 @@ export const MARKET_SECTORS = {
     { ticker: 'JNJ', name: 'Johnson & Johnson', isETF: false },
     { ticker: 'UNH', name: 'UnitedHealth Group', isETF: false },
     { ticker: 'PFE', name: 'Pfizer Inc.', isETF: false },
-    // { ticker: 'LLY', name: 'Eli Lilly' },
-    // { ticker: 'ABBV', name: 'AbbVie Inc.' },
-    // { ticker: 'MRK', name: 'Merck & Co.' },
-    // { ticker: 'TMO', name: 'Thermo Fisher Scientific' },
-    // { ticker: 'ABT', name: 'Abbott Laboratories' },
-    // { ticker: 'DHR', name: 'Danaher Corporation' },
-    // { ticker: 'CVS', name: 'CVS Health' },
+    { ticker: 'BMY', name: 'Bristol-Myers Squibb', isETF: false },
+    { ticker: 'LLY', name: 'Eli Lilly and Company', isETF: false },
+    { ticker: 'ABBV', name: 'AbbVie Inc.', isETF: false },
+    { ticker: 'MRK', name: 'Merck & Co.', isETF: false },
+    { ticker: 'TMO', name: 'Thermo Fisher Scientific', isETF: false },
+    { ticker: 'ABT', name: 'Abbott Laboratories', isETF: false },
+    { ticker: 'DHR', name: 'Danaher Corporation', isETF: false },
+    { ticker: 'CVS', name: 'CVS Health Corporation', isETF: false },
   ],
   'Consumer Discretionary': [
     {
@@ -161,6 +170,7 @@ export const MARKET_SECTORS = {
       isETF: true
     },
     { ticker: 'AMZN', name: 'Amazon.com', isETF: false },
+    { ticker: 'TSLA', name: 'Tesla Inc.', isETF: false },
     { ticker: 'HD', name: 'Home Depot', isETF: false },
     { ticker: 'MCD', name: 'McDonald\'s', isETF: false },
     { ticker: 'NKE', name: 'Nike Inc.', isETF: false },
@@ -170,6 +180,7 @@ export const MARKET_SECTORS = {
     { ticker: 'BKNG', name: 'Booking Holdings', isETF: false },
     { ticker: 'MAR', name: 'Marriott International', isETF: false },
     { ticker: 'GM', name: 'General Motors', isETF: false },
+    { ticker: 'F', name: 'Ford Motor Company', isETF: false },
   ],
   'Consumer Staples': [
     {
@@ -207,13 +218,13 @@ export const MARKET_SECTORS = {
     { ticker: 'XOM', name: 'Exxon Mobil', isETF: false },
     { ticker: 'CVX', name: 'Chevron Corporation', isETF: false },
     { ticker: 'COP', name: 'ConocoPhillips', isETF: false },
-    // { ticker: 'SLB', name: 'Schlumberger' },
-    // { ticker: 'EOG', name: 'EOG Resources' },
-    // { ticker: 'MPC', name: 'Marathon Petroleum' },
-    // { ticker: 'PSX', name: 'Phillips 66' },
-    // { ticker: 'VLO', name: 'Valero Energy' },
-    // { ticker: 'OXY', name: 'Occidental Petroleum' },
-    // { ticker: 'HAL', name: 'Halliburton' },
+    { ticker: 'SLB', name: 'Schlumberger', isETF: false },
+    { ticker: 'EOG', name: 'EOG Resources', isETF: false },
+    { ticker: 'MPC', name: 'Marathon Petroleum', isETF: false },
+    { ticker: 'PSX', name: 'Phillips 66', isETF: false },
+    { ticker: 'VLO', name: 'Valero Energy', isETF: false },
+    { ticker: 'OXY', name: 'Occidental Petroleum', isETF: false },
+    { ticker: 'HAL', name: 'Halliburton', isETF: false },
   ],
   'Industrials': [
     {
@@ -278,6 +289,46 @@ export const MARKET_SECTORS = {
     { ticker: 'TMUS', name: 'T-Mobile US', isETF: false },
     { ticker: 'CHTR', name: 'Charter Communications', isETF: false },
     { ticker: 'EA', name: 'Electronic Arts', isETF: false },
+  ],
+  'Real Estate': [
+    {
+      ticker: 'XLRE',
+      name: 'Real Estate Select Sector SPDR',
+      isETF: true
+    },
+    {
+      ticker: 'VNQ',
+      name: 'Vanguard Real Estate ETF',
+      isETF: true
+    },
+    { ticker: 'PLD', name: 'Prologis Inc.', isETF: false },
+    { ticker: 'AMT', name: 'American Tower Corporation', isETF: false },
+    { ticker: 'CCI', name: 'Crown Castle Inc.', isETF: false },
+    { ticker: 'EQIX', name: 'Equinix Inc.', isETF: false },
+    { ticker: 'PSA', name: 'Public Storage', isETF: false },
+    { ticker: 'SPG', name: 'Simon Property Group', isETF: false },
+    { ticker: 'O', name: 'Realty Income Corporation', isETF: false },
+    { ticker: 'WELL', name: 'Welltower Inc.', isETF: false },
+  ],
+  'Utilities': [
+    {
+      ticker: 'XLU',
+      name: 'Utilities Select Sector SPDR',
+      isETF: true
+    },
+    {
+      ticker: 'VPU',
+      name: 'Vanguard Utilities ETF',
+      isETF: true
+    },
+    { ticker: 'NEE', name: 'NextEra Energy', isETF: false },
+    { ticker: 'DUK', name: 'Duke Energy', isETF: false },
+    { ticker: 'SO', name: 'Southern Company', isETF: false },
+    { ticker: 'D', name: 'Dominion Energy', isETF: false },
+    { ticker: 'AEP', name: 'American Electric Power', isETF: false },
+    { ticker: 'EXC', name: 'Exelon Corporation', isETF: false },
+    { ticker: 'SRE', name: 'Sempra Energy', isETF: false },
+    { ticker: 'XEL', name: 'Xcel Energy', isETF: false },
   ],
 };
 
