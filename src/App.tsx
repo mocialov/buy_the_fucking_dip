@@ -25,7 +25,6 @@ function App() {
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [isLoadingSector, setIsLoadingSector] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [showAbout, setShowAbout] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string>(() => getUserApiKey() || DEMO_API_KEY);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -93,7 +92,6 @@ function App() {
 
     setIsLoadingSector(true);
     const companies = MARKET_SECTORS[selectedSector as keyof typeof MARKET_SECTORS];
-    setLoadingProgress({ current: 0, total: companies.length });
 
     const { key: apiKey } = getActiveApiKey();
     
@@ -104,8 +102,6 @@ function App() {
     // Process each company with the fetched data
     const analyses: SectorAnalysis[] = companies.map((company) => {
       const fullSeries = stockDataMap.get(company.ticker);
-      
-      setLoadingProgress(prev => ({ ...prev, current: prev.current + 1 }));
       
       if (!fullSeries || fullSeries.length === 0) {
         return {
@@ -152,7 +148,6 @@ function App() {
 
     handleSectorAnalysis(analyses, selectedSector);
     setIsLoadingSector(false);
-    setLoadingProgress({ current: 0, total: 0 });
   };
 
   const handleAddCustomTicker = async () => {
