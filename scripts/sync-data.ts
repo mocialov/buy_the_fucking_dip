@@ -61,16 +61,24 @@ async function fetchStockData(symbol: string): Promise<any[]> {
   }
 }
 
-async function upsertStockData(records: StockDataPoint[]): Promise<void> {
-  const { data, error } = await supabase
+async function replaceStockData(ticker: string, records: StockDataPoint[]): Promise<void> {
+  // Delete all existing data for this ticker
+  const { error: deleteError } = await supabase
     .from('stock_data')
-    .upsert(records, {
-      onConflict: 'ticker,date',
-      ignoreDuplicates: false
-    });
+    .delete()
+    .eq('ticker', ticker);
   
-  if (error) {
-    throw new Error(`Supabase upsert error: ${error.message}`);
+  if (deleteError) {
+    throw new Error(`Supabase delete error: ${deleteError.message}`);
+  }
+  
+  // Insert fresh data
+  const { error: insertError } = await supabase
+    .from('stock_data')
+    .insert(records);
+  
+  if (insertError) {
+    throw new Error(`Supabase insert error: ${insertError.message}`);
   }
 }
 
@@ -121,8 +129,8 @@ async function syncAllTickers() {
           new Map(records.map(record => [record.date, record])).values()
         );
         
-        // Upsert to Supabase
-        await upsertStockData(uniqueRecords);
+        // Replace all data for this ticker in Supabase
+        await replaceStockData(ticker, uniqueRecords);
         
         successCount++;
         console.log(`    ✅ Success: ${uniqueRecords.length} data points saved`);
