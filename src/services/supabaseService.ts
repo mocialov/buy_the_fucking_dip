@@ -7,8 +7,13 @@ import { createClient } from '@supabase/supabase-js';
 import type { DataPoint } from '../dip/types';
 
 // Get Supabase credentials from environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Support both Vite (import.meta.env) and Node.js (process.env) environments
+const supabaseUrl = typeof import.meta !== 'undefined' && import.meta.env 
+  ? import.meta.env.VITE_SUPABASE_URL 
+  : undefined;
+const supabaseAnonKey = typeof import.meta !== 'undefined' && import.meta.env
+  ? import.meta.env.VITE_SUPABASE_ANON_KEY
+  : undefined;
 
 // Initialize Supabase client (only if credentials are available)
 let supabase: ReturnType<typeof createClient> | null = null;
