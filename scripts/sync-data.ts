@@ -62,11 +62,14 @@ async function fetchStockData(symbol: string): Promise<any[]> {
 }
 
 async function replaceStockData(ticker: string, records: StockDataPoint[]): Promise<void> {
+  // Normalize ticker to uppercase for consistent querying
+  const normalizedTicker = ticker.toUpperCase();
+  
   // Delete all existing data for this ticker
   const { error: deleteError } = await supabase
     .from('stock_data')
     .delete()
-    .eq('ticker', ticker);
+    .eq('ticker', normalizedTicker);
   
   if (deleteError) {
     throw new Error(`Supabase delete error: ${deleteError.message}`);
@@ -115,7 +118,7 @@ async function syncAllTickers() {
         
         // Transform to database records
         const records: StockDataPoint[] = values.map((item: any) => ({
-          ticker,
+          ticker: ticker.toUpperCase(), // Normalize to uppercase for consistency
           sector: sectorName,
           company_name: name,
           date: item.datetime,

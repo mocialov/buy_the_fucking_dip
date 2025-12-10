@@ -42,10 +42,13 @@ export async function fetchStockDataFromSupabase(ticker: string): Promise<DataPo
   }
 
   try {
+    // Normalize ticker to uppercase for case-insensitive matching
+    const normalizedTicker = ticker.toUpperCase();
+    
     const { data, error } = await supabase
       .from('stock_data')
       .select('date, close_price')
-      .eq('ticker', ticker)
+      .eq('ticker', normalizedTicker)
       .order('date', { ascending: true });
 
     if (error) {
@@ -87,10 +90,13 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
   try {
     console.log(`Batch fetching ${tickers.length} tickers from Supabase...`);
     
+    // Normalize all tickers to uppercase for case-insensitive matching
+    const normalizedTickers = tickers.map(t => t.toUpperCase());
+    
     const { data, error } = await supabase
       .from('stock_data')
       .select('ticker, date, close_price')
-      .in('ticker', tickers)
+      .in('ticker', normalizedTickers)
       .order('date', { ascending: true });
 
     if (error) {
@@ -113,12 +119,17 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
     });
 
     // Convert to DataPoint format
+    // Map normalized (uppercase) tickers back to original case for result
+    const tickerMap = new Map(tickers.map(t => [t.toUpperCase(), t]));
+    
     grouped.forEach((rows, ticker) => {
       const dataPoints: DataPoint[] = rows.map((row: any) => ({
         date: new Date(row.date),
         value: parseFloat(row.close_price)
       }));
-      result.set(ticker, dataPoints);
+      // Use original ticker case from input
+      const originalTicker = tickerMap.get(ticker) || ticker;
+      result.set(originalTicker, dataPoints);
     });
 
     console.log(`✓ Batch loaded ${result.size}/${tickers.length} tickers from Supabase`);
@@ -173,10 +184,13 @@ export async function getTickerMetadata(ticker: string): Promise<{
   }
 
   try {
+    // Normalize ticker to uppercase for case-insensitive matching
+    const normalizedTicker = ticker.toUpperCase();
+    
     const { data, error } = await supabase
       .from('stock_data')
       .select('sector, company_name, is_etf, synced_at')
-      .eq('ticker', ticker)
+      .eq('ticker', normalizedTicker)
       .order('synced_at', { ascending: false })
       .limit(1)
       .maybeSingle() as { data: any; error: any };
