@@ -99,7 +99,8 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
       .from('stock_data')
       .select('ticker, date, close_price')
       .in('ticker', normalizedTickers)
-      .order('date', { ascending: true });
+      .order('date', { ascending: true })
+      .limit(10000); // Increase limit to handle multiple tickers with full history
 
     if (error) {
       console.error('Supabase batch fetch error:', error);
