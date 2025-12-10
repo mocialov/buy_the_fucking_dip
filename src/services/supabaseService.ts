@@ -97,9 +97,9 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
     console.log('Normalized tickers:', normalizedTickers);
     
     // Fetch all data using pagination to bypass server-side max-rows limit
-    // Supabase PostgREST may have max-rows set to 1000, so we paginate
+    // Supabase PostgREST max-rows set to 10000, using 9500 for safety margin
     const allData: any[] = [];
-    const pageSize = 1000;
+    const pageSize = 9500;
     let page = 0;
     let hasMore = true;
     
