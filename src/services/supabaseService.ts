@@ -89,35 +89,58 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
   }
 
   try {
-    const queryLimit = 10000; // Supabase default is 1000, increase for batch queries
     console.log(`Batch fetching ${tickers.length} tickers from Supabase...`);
     console.log('Requested tickers:', tickers);
     
     // Normalize all tickers to uppercase for case-insensitive matching
     const normalizedTickers = tickers.map(t => t.toUpperCase());
     console.log('Normalized tickers:', normalizedTickers);
-    console.log(`Query limit set to: ${queryLimit} rows`);
     
-    const { data, error } = await supabase
-      .from('stock_data')
-      .select('ticker, date, close_price')
-      .in('ticker', normalizedTickers)
-      .order('date', { ascending: true })
-      .limit(queryLimit);
+    // Fetch all data using pagination to bypass server-side max-rows limit
+    // Supabase PostgREST may have max-rows set to 1000, so we paginate
+    const allData: any[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('stock_data')
+        .select('ticker, date, close_price')
+        .in('ticker', normalizedTickers)
+        .order('date', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
 
-    if (error) {
-      console.error('Supabase batch fetch error:', error);
-      return result;
+      if (error) {
+        console.error('Supabase batch fetch error:', error);
+        break;
+      }
+
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        allData.push(...data);
+        console.log(`Fetched page ${page + 1}: ${data.length} rows (total: ${allData.length})`);
+        
+        // If we got less than pageSize, we've reached the end
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      }
     }
 
-    if (!data || data.length === 0) {
+    if (allData.length === 0) {
       console.log('No data found for any tickers');
       return result;
     }
 
+    console.log(`Total rows fetched: ${allData.length}`);
+
     // Group data by ticker
     const grouped = new Map<string, any[]>();
-    data.forEach((row: any) => {
+    allData.forEach((row: any) => {
       if (!grouped.has(row.ticker)) {
         grouped.set(row.ticker, []);
       }
