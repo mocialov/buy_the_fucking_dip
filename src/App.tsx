@@ -97,11 +97,14 @@ function App() {
     
     // Batch fetch all tickers at once (much faster!)
     const tickers = companies.map(c => c.ticker);
+    console.log('[App] Fetching tickers:', tickers);
     const stockDataMap = await fetchMultipleStockDataHybrid(tickers, apiKey);
+    console.log('[App] Got stockDataMap with keys:', Array.from(stockDataMap.keys()));
     
     // Process each company with the fetched data
     const analyses: SectorAnalysis[] = companies.map((company) => {
       const fullSeries = stockDataMap.get(company.ticker);
+      console.log(`[App] Processing ${company.ticker}: ${fullSeries ? fullSeries.length + ' points' : 'NO DATA'}`);
       
       if (!fullSeries || fullSeries.length === 0) {
         return {
