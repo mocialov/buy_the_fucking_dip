@@ -89,9 +89,11 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
 
   try {
     console.log(`Batch fetching ${tickers.length} tickers from Supabase...`);
+    console.log('Requested tickers:', tickers);
     
     // Normalize all tickers to uppercase for case-insensitive matching
     const normalizedTickers = tickers.map(t => t.toUpperCase());
+    console.log('Normalized tickers:', normalizedTickers);
     
     const { data, error } = await supabase
       .from('stock_data')
@@ -122,6 +124,8 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
     // Map normalized (uppercase) tickers back to original case for result
     const tickerMap = new Map(tickers.map(t => [t.toUpperCase(), t]));
     
+    console.log(`Found ${grouped.size} tickers in Supabase:`, Array.from(grouped.keys()));
+    
     grouped.forEach((rows, ticker) => {
       const dataPoints: DataPoint[] = rows.map((row: any) => ({
         date: new Date(row.date),
@@ -130,9 +134,17 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
       // Use original ticker case from input
       const originalTicker = tickerMap.get(ticker) || ticker;
       result.set(originalTicker, dataPoints);
+      console.log(`  Mapped ${ticker} -> ${originalTicker}: ${dataPoints.length} points`);
     });
 
     console.log(`✓ Batch loaded ${result.size}/${tickers.length} tickers from Supabase`);
+    
+    // Log missing tickers
+    const missingTickers = tickers.filter(t => !result.has(t));
+    if (missingTickers.length > 0) {
+      console.log(`⚠️  Missing from Supabase:`, missingTickers);
+    }
+    
     return result;
 
   } catch (error) {

@@ -490,16 +490,24 @@ export async function fetchMultipleStockDataHybrid(
 ): Promise<Map<string, DataPoint[]>> {
   const result = new Map<string, DataPoint[]>();
   
+  console.log('[fetchMultipleStockDataHybrid] Starting with symbols:', symbols);
+  
   // Try Supabase first for all tickers (single query!)
   if (isSupabaseAvailable()) {
+    console.log('[fetchMultipleStockDataHybrid] Supabase is available, fetching...');
     const cachedData = await fetchMultipleStockDataFromSupabase(symbols);
+    console.log('[fetchMultipleStockDataHybrid] Got from Supabase:', Array.from(cachedData.keys()));
     cachedData.forEach((data, ticker) => {
       result.set(ticker, data);
     });
+  } else {
+    console.log('[fetchMultipleStockDataHybrid] Supabase NOT available');
   }
   
   // Find missing tickers
   const missingTickers = symbols.filter(symbol => !result.has(symbol));
+  console.log('[fetchMultipleStockDataHybrid] Result has:', Array.from(result.keys()));
+  console.log('[fetchMultipleStockDataHybrid] Missing tickers:', missingTickers);
   
   if (missingTickers.length > 0) {
     console.log(`Fetching ${missingTickers.length} missing tickers from API:`, missingTickers);
