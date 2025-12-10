@@ -1,24 +1,86 @@
 # Dip Detection Web Application
 
-A React + TypeScript implementation of the dip detection algorithm, providing an interactive web interface for analyzing time series data.
+A React + TypeScript implementation of the dip detection algorithm, providing an interactive web interface for analyzing time series data with real-time stock data from Supabase.
 
 ## Features
 
 - **Interactive Visualization**: Real-time SVG-based charts showing detected dips
 - **Multi-scale Detection**: Automatically detects both sharp and gradual dips
+- **Stock Data Integration**: Fetch real stock data from Supabase or Twelve Data API
+- **Sector Analysis**: Analyze entire market sectors at once
+- **Time Interval Views**: 1w, 1m, 3m, 6m, 12m, 2y, 5y intervals
 - **Adjustable Parameters**: Fine-tune sensitivity, minimum width, and multi-scale options
 - **Example Data**: Pre-loaded examples to test the algorithm
 - **Comprehensive Metrics**: View depth, confidence, baseline, and more for each dip
-- **Pure TypeScript**: Complete port of Python algorithm (no dependencies beyond React)
 
 ## Quick Start
 
-### Installation
+### 1. Clone and Install
 
 ```bash
-cd webapp
+git clone <your-repo-url>
+cd buy_the_fucking_dip
 npm install
 ```
+
+### 2. Configure Environment Variables
+
+Create a `.env` file in the root directory:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your credentials:
+
+```env
+# Required: Supabase credentials
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Optional: Twelve Data API (fallback when data not in Supabase)
+VITE_TWELVE_DATA_API_KEY=your-api-key-here
+```
+
+**How to get credentials:**
+
+- **Supabase**: Go to [Supabase Dashboard](https://supabase.com/dashboard) → Your Project → Settings → API
+  - Copy "Project URL" as `VITE_SUPABASE_URL`
+  - Copy "anon public" key as `VITE_SUPABASE_ANON_KEY`
+  
+- **Twelve Data** (optional): Get free API key from [twelvedata.com](https://twelvedata.com/)
+
+### 3. Set Up Database
+
+Run the schema in your Supabase SQL Editor:
+
+```bash
+cat supabase-schema.sql
+```
+
+Copy and execute the SQL in your Supabase project (SQL Editor).
+
+### 4. Sync Stock Data (Optional)
+
+If you want to populate your database with stock data:
+
+```bash
+# Set environment variables for sync script
+export SUPABASE_URL=your_url
+export SUPABASE_KEY=your_service_role_key  # Use service_role key, not anon key
+export TWELVE_DATA_API_KEY=your_api_key
+
+# Run sync
+npm run sync-data
+```
+
+### 5. Run Development Server
+
+```bash
+npm run dev
+```
+
+Open your browser to `http://localhost:5173`
 
 ### Development
 
