@@ -89,19 +89,21 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
   }
 
   try {
+    const queryLimit = 10000; // Supabase default is 1000, increase for batch queries
     console.log(`Batch fetching ${tickers.length} tickers from Supabase...`);
     console.log('Requested tickers:', tickers);
     
     // Normalize all tickers to uppercase for case-insensitive matching
     const normalizedTickers = tickers.map(t => t.toUpperCase());
     console.log('Normalized tickers:', normalizedTickers);
+    console.log(`Query limit set to: ${queryLimit} rows`);
     
     const { data, error } = await supabase
       .from('stock_data')
       .select('ticker, date, close_price')
       .in('ticker', normalizedTickers)
       .order('date', { ascending: true })
-      .limit(10000); // Increase limit to handle multiple tickers with full history
+      .limit(queryLimit);
 
     if (error) {
       console.error('Supabase batch fetch error:', error);
