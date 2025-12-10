@@ -1,6 +1,7 @@
 /**
  * Supabase Service
  * Handles fetching stock data from Supabase database
+ * Updated: 2025-12-10 - Fixed query limit issue for batch fetching
  */
 
 import { createClient } from '@supabase/supabase-js';
