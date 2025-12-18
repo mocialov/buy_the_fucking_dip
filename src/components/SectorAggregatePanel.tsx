@@ -9,6 +9,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DipChart } from './DipChart';
 import { DipResults } from './DipResults';
+import { sectorMetricsConfig } from '../config/apiConfig';
 
 interface SectorAggregatePanelProps {
   sectorAnalyses: SectorAnalysis[];
@@ -18,7 +19,9 @@ interface SectorAggregatePanelProps {
 
 interface SectorMetrics {
   totalTickers: number;
-  tickersWithDips: number;
+  tickersWithDips: number; // stocks currently in dip (ongoing)
+  periodIncidencePercentage: number; // % stocks with any dip in selected period
+  stocksWithAnyDip: number; // count of stocks with any dip in period
   activeDipCount: number;
   breadthPercentage: number;
   averageDepth: number;
@@ -66,6 +69,8 @@ function calculateSectorMetrics(
     return {
       totalTickers: 0,
       tickersWithDips: 0,
+      periodIncidencePercentage: 0,
+      stocksWithAnyDip: 0,
       activeDipCount: 0,
       breadthPercentage: 0,
       averageDepth: 0,
@@ -83,14 +88,21 @@ function calculateSectorMetrics(
     };
   }
 
-  // STOCK-ONLY aggregates
-  let tickersWithDips = 0; // will represent stocks with ongoing dips
-  let totalActiveDips = 0; // stock-only count of ongoing dips
+  // Aggregates (selected period)
+  let stocksWithOngoingDips = 0; // stocks currently in dip (ongoing)
+  let stocksWithAnyDip = 0; // stocks with any dip in selected period
+  let totalActiveDips = 0; // stock-only count of ongoing dips (active now)
   let totalOngoingDepth = 0; // stock-only ongoing depth sum (normalized)
   let totalOngoingDuration = 0; // stock-only ongoing duration sum (days)
-  let maxOngoingDepth = 0; // stock-only max ongoing depth
-  let deepestTicker = ''; // stock-only deepest ongoing dip ticker
+  let maxDepthAll = 0; // stock-only max dip depth (any dip in period)
+  let deepestTicker = ''; // stock-only deepest dip ticker (any dip in period)
   let ongoingDipCount = 0; // stock-only ongoing dip count
+  // For average depth/duration across all dips, track weighted sums
+  let sumDepthAll = 0; // legacy: sum of normalized depth across all dips (stocks only)
+  let countDipsAll = 0; // total dip count (stocks only)
+  let sumDurationAll = 0; // sum of durations across all dips (stocks only)
+  let sumDepthDurationWeighted = 0; // sum(depth * duration) for duration-weighted average
+  const allDepthsStocks: number[] = []; // collect normalized depths to compute percentiles
   
   // ETF-specific tracking
   let etfOngoingDepthSum = 0;
@@ -117,20 +129,14 @@ function calculateSectorMetrics(
       stockCount++;
     }
     
-    // Check for ongoing dips (dips that extend to the end of the series)
-    const ongoingDips = dips.filter(dip => {
-      const dipEnd = dip.start + dip.width - 1;
-      return dipEnd >= series.length - 3; // Within last 3 points = ongoing
-    });
-    
-    // Track if ticker has any ongoing dip (for breadth calculation)
-    const hasAnyOngoingDip = ongoingDips.length > 0;
-    if (hasAnyOngoingDip) {
+    // Check ongoing dips (active now) for ACTIVE DIPS aggregate
+    const ongoingDips = dips.filter(dip => (dip.start + dip.width - 1) >= series.length - 3);
+    if (ongoingDips.length > 0) {
       if (isETF) {
         etfsWithDips++;
       } else {
         stocksWithDips++;
-        tickersWithDips++;
+        stocksWithOngoingDips++;
         totalActiveDips += ongoingDips.length;
       }
     }
@@ -181,7 +187,7 @@ function calculateSectorMetrics(
     // Formula: (# of dips) × (avg depth %) × (unique days in dips / total days analyzed)
     const dipScore = (totalDips * avgDipDepth * (totalDipDays / series.length)) * 100;
     
-    // Track statistics for ongoing dips only (for aggregate sector metrics)
+    // Track ongoing-only for ACTIVE DIPS; track all dips for period aggregates
     const ongoingAggDips = allDips.filter(d => d.isOngoing);
     ongoingAggDips.forEach(aggDip => {
       // STOCK aggregates
@@ -189,11 +195,6 @@ function calculateSectorMetrics(
         totalOngoingDepth += aggDip.normalizedDepth;
         totalOngoingDuration += aggDip.duration;
         ongoingDipCount++;
-
-        if (aggDip.normalizedDepth > maxOngoingDepth) {
-          maxOngoingDepth = aggDip.normalizedDepth;
-          deepestTicker = analysis.ticker;
-        }
       }
 
       // ETF aggregates (for benchmark display only)
@@ -202,6 +203,22 @@ function calculateSectorMetrics(
         etfOngoingDipCount++;
       }
     });
+
+    // Track all-dip aggregates for selected period (stocks only)
+    if (!isETF && totalDips > 0) {
+      sumDepthAll += allDips.reduce((s, d) => s + d.normalizedDepth, 0);
+      countDipsAll += totalDips;
+      const durationSum = allDips.reduce((s, d) => s + d.duration, 0);
+      sumDurationAll += durationSum;
+      sumDepthDurationWeighted += allDips.reduce((s, d) => s + d.normalizedDepth * d.duration, 0);
+      allDips.forEach(d => allDepthsStocks.push(d.normalizedDepth));
+      if (maxDipDepth > maxDepthAll) {
+        maxDepthAll = maxDipDepth;
+        deepestTicker = analysis.ticker;
+      }
+      // Breadth: stocks with any dip in selected period
+      stocksWithAnyDip++;
+    }
 
     // Calculate current metrics (for deepest ongoing dip if exists)
     const currentValue = series[series.length - 1].value;
@@ -251,9 +268,14 @@ function calculateSectorMetrics(
   });
 
   // STOCK-ONLY displayed aggregates
-  const breadthPercentage = stockCount > 0 ? (stocksWithDips / stockCount) * 100 : 0;
-  const averageDepth = ongoingDipCount > 0 ? totalOngoingDepth / ongoingDipCount : 0;
-  const averageDuration = ongoingDipCount > 0 ? totalOngoingDuration / ongoingDipCount : 0;
+  // Breadth: % of stocks with any dip in selected period
+  const breadthPercentage = stockCount > 0 ? (stocksWithOngoingDips / stockCount) * 100 : 0;
+  const periodIncidencePercentage = stockCount > 0 ? (stocksWithAnyDip / stockCount) * 100 : 0;
+  // Average depth/duration across all dips in selected period (stocks only)
+  const averageDepth = sumDurationAll > 0
+    ? (sumDepthDurationWeighted / sumDurationAll)
+    : (countDipsAll > 0 ? (sumDepthAll / countDipsAll) : 0);
+  const averageDuration = countDipsAll > 0 ? (sumDurationAll / countDipsAll) : 0;
   const etfAverageDepth = etfOngoingDipCount > 0 ? etfOngoingDepthSum / etfOngoingDipCount : 0;
   const etfBreadthPercentage = etfCount > 0 ? (etfsWithDips / etfCount) * 100 : 0;
   const stockBreadthPercentage = stockCount > 0 ? (stocksWithDips / stockCount) * 100 : 0;
@@ -265,25 +287,62 @@ function calculateSectorMetrics(
     stocksWithDips,
     etfBreadthPercentage,
     stockBreadthPercentage,
+    stocksWithOngoingDips,
+    stocksWithAnyDip,
+    breadthPercentage,
+    periodIncidencePercentage,
     totalTickers,
-    tickersWithDips
+    tickersWithDips: stocksWithOngoingDips
   });
 
+  // Helper to compute percentile robust tail depth
+  function percentile(values: number[], p: number): number {
+    if (values.length === 0) return 0;
+    const arr = [...values].sort((a, b) => a - b);
+    const idx = Math.min(arr.length - 1, Math.max(0, Math.floor(p * (arr.length - 1))));
+    return arr[idx];
+  }
+
   // Sector Health Score (0-100, where 100 = healthy, 0 = crisis)
-  // Based on: breadth (60%), average depth (30%), max depth (10%)
-  const breadthScore = Math.max(0, 100 - breadthPercentage * 1.5); // Heavy penalty for breadth (stocks only)
-  const avgDepthScore = Math.max(0, 100 - averageDepth * 500); // Depth as percentage (stocks only)
-  const maxDepthScore = Math.max(0, 100 - maxOngoingDepth * 400); // Stocks only
-  const sectorHealthScore = Math.round(
-    breadthScore * 0.6 + avgDepthScore * 0.3 + maxDepthScore * 0.1
-  );
+  // Based on: breadth, duration-weighted average depth, and robust tail depth (max/p90 mix)
+  const {
+    health: { weights, penalties, tailMix },
+  } = sectorMetricsConfig;
+  const p90Depth = percentile(allDepthsStocks, tailMix.percentile);
+  const tailDepth = tailMix.maxWeight * maxDepthAll + tailMix.p90Weight * p90Depth;
+
+  const breadthScore = Math.max(0, 100 - breadthPercentage * penalties.breadthMultiplier);
+  const avgDepthScore = Math.max(0, 100 - averageDepth * penalties.avgDepthMultiplier);
+  const tailDepthScore = Math.max(0, 100 - tailDepth * penalties.tailDepthMultiplier);
+
+  const sectorHealthScore = Math.max(0, Math.min(100, Math.round(
+    breadthScore * weights.breadth +
+    avgDepthScore * weights.avgDepth +
+    tailDepthScore * weights.tail
+  )));
 
   // Correlation Level (how clustered are the dips?)
   let correlationLevel: 'Low' | 'Moderate' | 'High' | 'Very High';
-  if (breadthPercentage >= 70) correlationLevel = 'Very High';
-  else if (breadthPercentage >= 50) correlationLevel = 'High';
-  else if (breadthPercentage >= 30) correlationLevel = 'Moderate';
+  const {
+    correlation: { breadthThresholds, concentrationBump },
+  } = sectorMetricsConfig;
+  if (breadthPercentage >= breadthThresholds.veryHigh) correlationLevel = 'Very High';
+  else if (breadthPercentage >= breadthThresholds.high) correlationLevel = 'High';
+  else if (breadthPercentage >= breadthThresholds.moderate) correlationLevel = 'Moderate';
   else correlationLevel = 'Low';
+
+  // Optional concentration bump: elevate level if current breadth is high
+  // relative to period incidence (suggests clustering now, not just persistence)
+  if (concentrationBump.enabled && breadthPercentage >= concentrationBump.minBreadthForBump) {
+    const threshold = Math.max(0, periodIncidencePercentage - concentrationBump.marginPctPoints);
+    if (breadthPercentage >= threshold) {
+      correlationLevel =
+        correlationLevel === 'Low' ? 'Moderate' :
+        correlationLevel === 'Moderate' ? 'High' :
+        correlationLevel === 'High' ? 'Very High' :
+        'Very High';
+    }
+  }
 
   // Sort ticker details: 
   // 1. ETFs first, then stocks
@@ -305,11 +364,13 @@ function calculateSectorMetrics(
   return {
     // Display stock-only aggregates
     totalTickers: stockCount,
-    tickersWithDips,
+    tickersWithDips: stocksWithOngoingDips,
+    periodIncidencePercentage,
+    stocksWithAnyDip,
     activeDipCount: totalActiveDips,
     breadthPercentage,
     averageDepth,
-    maxDepth: maxOngoingDepth,
+    maxDepth: maxDepthAll,
     deepestTicker,
     averageDuration,
     sectorHealthScore,
@@ -337,12 +398,7 @@ function getHealthLabel(score: number): string {
   return 'Crisis';
 }
 
-function getBreadthColor(percentage: number): string {
-  if (percentage >= 70) return '#EF4444'; // Red - Very high correlation
-  if (percentage >= 50) return '#F97316'; // Orange - High correlation
-  if (percentage >= 30) return '#F59E0B'; // Yellow - Moderate
-  return '#10B981'; // Green - Low correlation (healthy)
-}
+// Removed breadth color helper since breadth tile is no longer displayed
 
 export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   sectorAnalyses,
@@ -372,7 +428,6 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
 
   const metrics = calculateSectorMetrics(sectorAnalyses, selectedInterval);
   const healthColor = getHealthColor(metrics.sectorHealthScore);
-  const breadthColor = getBreadthColor(metrics.breadthPercentage);
 
   const exportToPDF = () => {
     const doc = new jsPDF();
@@ -553,41 +608,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           </div>
         </div>
 
-        {/* Breadth Percentage */}
-        <div style={{
-          padding: '15px',
-          background: `${breadthColor}15`,
-          borderRadius: '6px',
-          border: `2px solid ${breadthColor}`
-        }}>
-          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px', fontWeight: '600' }}>
-            DIP BREADTH (% IN DIP)
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: breadthColor, marginBottom: '5px' }}>
-            {metrics.breadthPercentage.toFixed(1)}%
-          </div>
-          <div style={{ fontSize: '13px', color: '#6B7280' }}>
-            {metrics.tickersWithDips} of {metrics.stockCount} tickers
-          </div>
-        </div>
 
-        {/* Active Dips Count */}
-        <div style={{
-          padding: '15px',
-          background: '#F3F4F6',
-          borderRadius: '6px',
-          border: '2px solid #D1D5DB'
-        }}>
-          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px', fontWeight: '600' }}>
-            ACTIVE DIPS
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>
-            {metrics.activeDipCount}
-          </div>
-          <div style={{ fontSize: '13px', color: '#6B7280' }}>
-            Ongoing now
-          </div>
-        </div>
 
         {/* Correlation Level */}
         <div style={{
@@ -635,25 +656,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         />
       </div>
 
-      {/* Interpretation Guide */}
-      <div style={{
-        marginTop: '15px',
-        padding: isMobile ? '10px' : '12px',
-        background: '#EFF6FF',
-        borderRadius: '6px',
-        border: '1px solid #BFDBFE'
-      }}>
-        <div style={{ fontSize: isMobile ? '12px' : '13px', color: '#1E40AF', lineHeight: '1.6' }}>
-          <strong>Interpretation:</strong>
-          {metrics.breadthPercentage >= 50 ? (
-            <span> High breadth ({metrics.breadthPercentage.toFixed(0)}%) suggests sector-wide pressure. This may indicate systemic issues or broader market correction affecting the entire {sectorName.toLowerCase()} sector.</span>
-          ) : metrics.breadthPercentage >= 30 ? (
-            <span> Moderate breadth ({metrics.breadthPercentage.toFixed(0)}%) indicates some correlation. Monitor for potential sector-wide trend developing.</span>
-          ) : (
-            <span> Low breadth ({metrics.breadthPercentage.toFixed(0)}%) suggests stock-specific issues rather than sector-wide problems.</span>
-          )}
-        </div>
-      </div>
+      
 
       {/* Ticker Rankings Table */}
       <div style={{
@@ -692,25 +695,25 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
             </thead>
             <tbody>
               {(() => {
-                // Calculate min/max dipScore for gradient (excluding zeros)
-                const validScores = metrics.tickerDetails
-                  .map(d => d.dipScore)
-                  .filter(s => s > 0);
-                const minScore = validScores.length > 0 ? Math.min(...validScores) : 0;
-                const maxScore = validScores.length > 0 ? Math.max(...validScores) : 0;
-                
-                // Helper function to get color based on relative position
-                const getDipScoreColor = (score: number): string => {
-                  if (score === 0 || maxScore === minScore) return '#6B7280';
-                  
-                  // Normalize score to 0-1 range (0 = best/orange, 1 = worst/red)
-                  const normalized = (score - minScore) / (maxScore - minScore);
-                  
-                  if (normalized <= 0.33) return '#F59E0B'; // Orange - best third
-                  if (normalized <= 0.67) return '#EF4444'; // Light red - middle third
-                  return '#DC2626'; // Dark red - worst third
+                // Compute ETF average Dip Score (excluding ETFs with 0 dips)
+                const etfScores = metrics.tickerDetails.filter(d => d.isETF && d.totalDips > 0);
+                const etfAvgScore = etfScores.length > 0
+                  ? etfScores.reduce((sum, d) => sum + d.dipScore, 0) / etfScores.length
+                  : 0;
+
+                // Helper: color non-ETF Dip Score relative to ETF average
+                const getDipScoreTextColor = (detail: TickerDipDetail): string => {
+                  // ETFs: neutral color; Stocks with no dips: neutral
+                  if (detail.isETF || detail.dipScore === 0) return '#6B7280';
+                  if (etfAvgScore <= 0) return '#6B7280';
+
+                  const diffRatio = (detail.dipScore - etfAvgScore) / etfAvgScore; // negative = better than ETFs
+                  // Green if better (lower than ETF average), red if worse (higher), orange if similar
+                  if (diffRatio < -0.2) return '#10B981';      // significantly better
+                  if (diffRatio > 0.2) return '#EF4444';       // significantly worse
+                  return '#F59E0B';                            // around ETF average
                 };
-                
+
                 return metrics.tickerDetails.map((detail, index) => {
                 // For stocks: compare aggregated dipScore vs ETF average dipScore
                 let breadthComparison = '';
@@ -731,10 +734,10 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     // Compare stock dipScore vs ETF average dipScore
                     const comparison = ((detail.dipScore - etfAvgScore) / etfAvgScore) * 100;
                     if (comparison > 20) {
-                      breadthComparison = `${comparison.toFixed(0)}% worse`;
+                      breadthComparison = `(${comparison.toFixed(0)}% worse)`;
                       comparisonColor = '#DC2626';
                     } else if (comparison < -20) {
-                      breadthComparison = `${Math.abs(comparison).toFixed(0)}% better`;
+                      breadthComparison = `(${Math.abs(comparison).toFixed(0)}% better)`;
                       comparisonColor = '#059669';
                     } else {
                       breadthComparison = `≈ Similar`;
@@ -919,7 +922,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                       padding: isMobile ? '6px' : '10px',
                       textAlign: 'center',
                       fontWeight: '600',
-                      color: getDipScoreColor(detail.dipScore),
+                      color: getDipScoreTextColor(detail),
                       fontSize: isMobile ? '11px' : 'inherit',
                       width: '85px'
                     }}>
@@ -1017,7 +1020,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
             <strong>vs Benchmark</strong> compares a stock’s Dip Score to the average ETF Dip Score.
             "Stock-specific" = ETFs had no dips. "X% worse/better" = relative to ETF average. "Similar" = within ±20% of ETF average. |
             <strong>Separators</strong>: a navy header marks the start of stocks; a dark separator marks the transition to recovered/no dips.
-            <strong>Color cue</strong>: Dip Score text color indicates relative severity (orange → light red → dark red).
+            <strong>Color cue</strong>: For stocks, Dip Score text color compares to ETF average (green → orange → red).
           </div>
           <button
             onClick={exportToPDF}

@@ -547,3 +547,170 @@ export function findAllDips(
     return allCandidates;
   }
 }
+
+/**
+ * Merge overlapping or near-adjacent dips, preferring deeper ones and avoiding duplicates.
+ * Intended for consolidating results from sliding-window detection across a long series.
+ */
+function mergeDipsAcrossWindows(dips: DipMetrics[], seriesLength: number, gapTolerance: number = 2): DipMetrics[] {
+  if (dips.length <= 1) {
+    // Normalize is_ongoing flag against full series length
+    if (dips.length === 1) {
+      const d = dips[0];
+      const endIdx = d.start + d.width - 1;
+      d.is_ongoing = endIdx >= seriesLength - 3;
+    }
+    return dips;
+  }
+
+  // Sort by start index
+  const sorted = [...dips].sort((a, b) => a.start - b.start);
+  const merged: DipMetrics[] = [];
+
+  // Helper to finalize a dip (recompute width, normalize flags)
+  const finalize = (d: DipMetrics) => {
+    d.width = d.end - d.start + 1;
+    const endIdx = d.start + d.width - 1;
+    d.is_ongoing = endIdx >= seriesLength - 3;
+    return d;
+  };
+
+  // Start with the first dip as current accumulator
+  let current = { ...sorted[0] } as DipMetrics;
+  // Track union of detection scales if present
+  let currentScaleList = new Set<number>();
+  if (current.scale_list && current.scale_list.length) {
+    for (const s of current.scale_list) currentScaleList.add(s);
+  } else if (current.scale_factor) {
+    currentScaleList.add(current.scale_factor);
+  }
+  // Count of how many windows contributed to this merged dip
+  let windowHits = 1;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const next = sorted[i];
+    const nextEnd = next.start + next.width - 1;
+    const currentEnd = current.start + current.width - 1;
+
+    // Consider overlap or small gap within tolerance
+    if (next.start <= currentEnd + gapTolerance) {
+      // Merge: keep deeper metrics but expand bounds to cover both
+      const preferNext = next.depth > current.depth * 1.05; // significant deeper
+      const preferSimilar = !preferNext && Math.abs(next.depth - current.depth) / Math.max(1e-9, current.depth) < 0.1;
+
+      // Expand the envelope bounds (start/end) to cover both dips
+      const newStart = Math.min(current.start, next.start);
+      const newEnd = Math.max(currentEnd, nextEnd);
+
+      if (preferNext) {
+        // Replace primary metrics with next, but keep expanded bounds
+        const replaced = { ...next } as DipMetrics;
+        replaced.start = newStart;
+        replaced.end = newEnd;
+        current = replaced;
+      } else {
+        // Keep current metrics, just expand bounds
+        current.start = newStart;
+        current.end = newEnd;
+        // If depths are very close, modestly boost confidence
+        if (preferSimilar) {
+          current.confidence = Math.min(1.0, current.confidence * 1.05);
+        }
+      }
+
+      // Union scales
+      if (next.scale_list && next.scale_list.length) {
+        for (const s of next.scale_list) currentScaleList.add(s);
+      } else if (next.scale_factor) {
+        currentScaleList.add(next.scale_factor);
+      }
+      windowHits += 1;
+      // Slight confidence boost per corroborating window
+      current.confidence = Math.min(1.0, current.confidence * (1.0 + Math.min(0.1, 0.02 * windowHits)));
+    } else {
+      // No overlap: finalize current and push
+      current.scale_list = Array.from(currentScaleList).sort((a, b) => a - b);
+      current.detected_at_scales = current.scale_list.length;
+      merged.push(finalize(current));
+
+      // Reset accumulator
+      current = { ...next } as DipMetrics;
+      currentScaleList = new Set<number>();
+      if (current.scale_list && current.scale_list.length) {
+        for (const s of current.scale_list) currentScaleList.add(s);
+      } else if (current.scale_factor) {
+        currentScaleList.add(current.scale_factor);
+      }
+      windowHits = 1;
+    }
+  }
+
+  // Push the last accumulated dip
+  current.scale_list = Array.from(currentScaleList).sort((a, b) => a - b);
+  current.detected_at_scales = current.scale_list.length;
+  merged.push(finalize(current));
+
+  // Sort final list by confidence desc (then depth desc) for stability
+  merged.sort((a, b) => (b.confidence - a.confidence) || (b.depth - a.depth));
+  return merged;
+}
+
+/**
+ * Rolling 6-month detection over longer periods.
+ * Slides a window (default 125 trading days) with stride=1 and merges results.
+ */
+export function findDipsRolling(
+  series: number[],
+  options: FindAllDipsOptions = {},
+  windowDays: number = 125,
+  stride: number = 1
+): DipMetrics[] {
+  const N = series.length;
+  if (N === 0) return [];
+
+  // For short series, fallback to standard detection
+  if (N <= windowDays) {
+    const direct = findAllDips(series, options);
+    // Normalize end and width consistency
+    return direct.map(d => ({ ...d, end: d.start + d.width - 1, is_ongoing: (d.start + d.width - 1) >= N - 3 }));
+  }
+
+  const all: DipMetrics[] = [];
+  const step = Math.max(1, stride);
+  const w = Math.max(5, windowDays);
+
+  for (let start = 0; start <= N - w; start += step) {
+    const end = start + w;
+    const window = series.slice(start, end);
+    const dips = findAllDips(window, options);
+    for (const d of dips) {
+      // Convert to global indices
+      const global: DipMetrics = { ...d } as DipMetrics;
+      global.start = d.start + start;
+      global.end = global.start + d.width - 1;
+      global.seg_min_index = d.seg_min_index + start;
+      // Do not set is_ongoing here; will normalize after merging
+      all.push(global);
+    }
+  }
+
+  if (all.length === 0) return [];
+  return mergeDipsAcrossWindows(all, N);
+}
+
+/**
+ * Convenience wrapper: use rolling detection for intervals longer than ~6 months.
+ */
+export function findDipsOptimalForInterval(
+  series: number[],
+  intervalDays: number,
+  options: FindAllDipsOptions = {}
+): DipMetrics[] {
+  const SIX_MONTHS = 125; // ~6 months of trading days
+  if (intervalDays > SIX_MONTHS) {
+    return findDipsRolling(series, options, SIX_MONTHS, 1);
+  }
+  const dips = findAllDips(series, options);
+  const N = series.length;
+  return dips.map(d => ({ ...d, end: d.start + d.width - 1, is_ongoing: (d.start + d.width - 1) >= N - 3 }));
+}

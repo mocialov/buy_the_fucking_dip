@@ -119,3 +119,44 @@ export function isDebugMode(): boolean {
   const debugMode = import.meta.env.VITE_DEBUG_MODE;
   return debugMode === 'true' || debugMode === true;
 }
+
+/**
+ * Configuration for sector-level metrics and thresholds.
+ * Allows tuning without changing component logic.
+ */
+export const sectorMetricsConfig = {
+  health: {
+    // Weights should sum to 1.0
+    weights: {
+      breadth: 0.6,
+      avgDepth: 0.3,
+      tail: 0.1,
+    },
+    // Linear penalty multipliers converting metrics to 0-100 component scores
+    penalties: {
+      breadthMultiplier: 1.5, // breadth penalization factor
+      avgDepthMultiplier: 500, // normalized depth (0-1) to score scale
+      tailDepthMultiplier: 400, // tail depth (0-1) to score scale
+    },
+    // Mix between max depth and high-percentile depth for robustness
+    tailMix: {
+      maxWeight: 0.5,
+      p90Weight: 0.5,
+      percentile: 0.9,
+    },
+  },
+  correlation: {
+    // Thresholds for mapping ongoing breadth to label
+    breadthThresholds: {
+      moderate: 30,
+      high: 50,
+      veryHigh: 70,
+    },
+    // Optional bump if current breadth is high relative to period incidence
+    concentrationBump: {
+      enabled: true,
+      minBreadthForBump: 50, // only consider bumping if breadth is at least this
+      marginPctPoints: 10, // bump if breadth >= (periodIncidence - margin)
+    },
+  },
+} as const;

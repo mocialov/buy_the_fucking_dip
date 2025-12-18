@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { findAllDips } from './dip/detectDip';
+import { findAllDips, findDipsOptimalForInterval } from './dip/detectDip';
 import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchMultipleStockDataHybrid, fetchStockDataHybrid } from './components/SeriesInput';
 import { DipChart } from './components/DipChart';
 import { DipResults } from './components/DipResults';
@@ -19,7 +19,7 @@ function App() {
   const [dips, setDips] = useState<DipMetrics[]>([]);
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [sectorAnalyses, setSectorAnalyses] = useState<SectorAnalysis[]>([]);
-  const [selectedTimeInterval, setSelectedTimeInterval] = useState<TimeInterval>('12m');
+  const [selectedTimeInterval, setSelectedTimeInterval] = useState<TimeInterval>('6m');
   const [currentSectorName, setCurrentSectorName] = useState<string>('');
   const [customTicker, setCustomTicker] = useState('');
   const [isAddingCustom, setIsAddingCustom] = useState(false);
@@ -102,55 +102,131 @@ function App() {
     console.log('[App] Got stockDataMap with keys:', Array.from(stockDataMap.keys()));
     
     // Process each company with the fetched data
-    const analyses: SectorAnalysis[] = companies.map((company) => {
+    // Build jobs for worker pool
+    type Job = {
+      ticker: string;
+      companyName: string;
+      isETF?: boolean;
+      interval: TimeInterval;
+      intervalDays: number;
+      series: DataPoint[];
+      seriesValues: number[];
+    };
+    const jobs: Job[] = [];
+
+    companies.forEach((company) => {
       const fullSeries = stockDataMap.get(company.ticker);
       console.log(`[App] Processing ${company.ticker}: ${fullSeries ? fullSeries.length + ' points' : 'NO DATA'}`);
-      
       if (!fullSeries || fullSeries.length === 0) {
-        return {
+        // Still record an entry with error
+        jobs.push({
           ticker: company.ticker,
           companyName: company.name,
-          fullSeries: [],
-          intervalAnalyses: [],
-          error: 'No data available',
-          isETF: company.isETF
-        };
+          isETF: company.isETF,
+          interval: '6m',
+          intervalDays: TIME_INTERVALS['6m'].days,
+          series: [],
+          seriesValues: []
+        });
+        return;
       }
-      
-      // Create analyses for each time interval
-      const intervalAnalyses: import('./components/SeriesInput').IntervalAnalysis[] = Object.keys(TIME_INTERVALS).map(intervalKey => {
+      Object.keys(TIME_INTERVALS).forEach((intervalKey) => {
         const interval = intervalKey as TimeInterval;
         const days = TIME_INTERVALS[interval].days;
-        
-        // Slice the most recent data for this interval
         const slicedSeries = fullSeries.slice(-days);
-        
-        // Run dip analysis on the values
         const values = slicedSeries.map((p: DataPoint) => p.value);
-        const dips = findAllDips(values, {
-          k: 0.7,
-          minWidth: 3,
-          multiScale: true,
-        });
-        
-        return {
+        jobs.push({
+          ticker: company.ticker,
+          companyName: company.name,
+          isETF: company.isETF,
           interval,
+          intervalDays: days,
           series: slicedSeries,
-          dips
-        };
+          seriesValues: values,
+        });
       });
-      
-      return {
+    });
+
+    // Prepare analysis result accumulator
+    const resultMap = new Map<string, SectorAnalysis>();
+    companies.forEach((company) => {
+      const fullSeries = stockDataMap.get(company.ticker) || [];
+      resultMap.set(company.ticker, {
         ticker: company.ticker,
         companyName: company.name,
         fullSeries,
-        intervalAnalyses,
-        isETF: company.isETF
-      };
+        intervalAnalyses: [],
+        isETF: company.isETF,
+        error: fullSeries.length === 0 ? 'No data available' : undefined,
+      });
     });
 
-    handleSectorAnalysis(analyses, selectedSector);
-    setIsLoadingSector(false);
+    // Worker pool
+    const concurrency = Math.min(jobs.length, (navigator.hardwareConcurrency || 4));
+    const workers: Worker[] = [];
+    let nextJobIndex = 0;
+    let completedJobs = 0;
+
+    const options: FindAllDipsOptions = { k: 0.7, minWidth: 3, multiScale: true };
+
+    function spawnWorker() {
+      const worker = new Worker(new URL('./workers/dipWorker.ts', import.meta.url), { type: 'module' });
+      worker.onmessage = (e: MessageEvent<{ ticker: string; interval: TimeInterval; dips: DipMetrics[] }>) => {
+        const { ticker, interval, dips } = e.data;
+        const analysis = resultMap.get(ticker);
+        if (analysis) {
+          const job = jobs.find(j => j.ticker === ticker && j.interval === interval);
+          if (job) {
+            analysis.intervalAnalyses.push({ interval, series: job.series, dips });
+          }
+        }
+        completedJobs += 1;
+        // Assign next job if any
+        if (nextJobIndex < jobs.length) {
+          const j = jobs[nextJobIndex++];
+          worker.postMessage({
+            ticker: j.ticker,
+            interval: j.interval,
+            intervalDays: j.intervalDays,
+            seriesValues: j.seriesValues,
+            options
+          });
+        } else {
+          // No more jobs; terminate worker
+          worker.terminate();
+        }
+
+        // When all jobs complete, update UI
+        if (completedJobs === jobs.length) {
+          const analyses = Array.from(resultMap.values()).map(a => ({
+            ...a,
+            // Sort intervalAnalyses by interval order
+            intervalAnalyses: a.intervalAnalyses.sort((x, y) => TIME_INTERVALS[x.interval].days - TIME_INTERVALS[y.interval].days)
+          }));
+          handleSectorAnalysis(analyses, selectedSector);
+          setIsLoadingSector(false);
+        }
+      };
+
+      // Prime worker with initial job
+      if (nextJobIndex < jobs.length) {
+        const j = jobs[nextJobIndex++];
+        worker.postMessage({
+          ticker: j.ticker,
+          interval: j.interval,
+          intervalDays: j.intervalDays,
+          seriesValues: j.seriesValues,
+          options
+        });
+      }
+
+      workers.push(worker);
+    }
+
+    // Spawn pool
+    for (let i = 0; i < concurrency; i++) {
+      spawnWorker();
+    }
   };
 
   const handleAddCustomTicker = async () => {
@@ -181,7 +257,7 @@ function App() {
         
         // Run dip analysis on the values
         const values = slicedSeries.map((p: DataPoint) => p.value);
-        const dips = findAllDips(values, {
+        const dips = findDipsOptimalForInterval(values, days, {
           k: 0.7,
           minWidth: 3,
           multiScale: true,
@@ -225,8 +301,10 @@ function App() {
     }
   };
 
+  const isLanding = !hasAnalyzed && sectorAnalyses.length === 0;
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${isLanding ? 'landing' : 'analysis'}`}>
       <div className="app-content">
         {/* Header */}
         {!hasAnalyzed && sectorAnalyses.length === 0 && images.length > 0 && (
@@ -541,12 +619,14 @@ function App() {
                 <h3>Aggregated Metrics (Sector Analysis):</h3>
                 <ul>
                   <li><strong>Total Dips:</strong> Count of all dips detected in the selected time period</li>
-                  <li><strong>Avg Depth:</strong> Average depth across all dips (mean percentage below baseline)</li>
+                  <li><strong>Avg Depth:</strong> Duration-weighted average depth across all dips (percentage below baseline)</li>
                   <li><strong>Max Depth:</strong> Worst single dip depth in the period (maximum percentage drop)</li>
                   <li><strong>Avg Duration:</strong> Average length of dips measured in days</li>
                   <li><strong>Total Days in Dips:</strong> Sum of all days spent in dip conditions</li>
                   <li><strong>Dip Score:</strong> Combined weakness metric = (# of dips) × (avg depth) × (total dip days / period days) × 100. Higher score indicates chronic weakness with frequent, deep, or prolonged dips</li>
                   <li><strong>vs Benchmark:</strong> Compares stock's Dip Score against average ETF Dip Score. "Stock-specific" means ETFs had no dips. "X% worse/better" shows relative performance. "Similar" means within ±20%</li>
+                  <li><strong>Sector Health Score:</strong> 0–100 (higher is healthier). Weighted blend of: ongoing breadth (heavy penalty), duration-weighted average depth, and a robust tail depth (mix of max and 90th percentile). Weights and penalty multipliers are configurable.</li>
+                  <li><strong>Correlation Level:</strong> Estimated from ongoing breadth with thresholds (Low/Moderate/High/Very High). If current breadth is high relative to period-wide incidence (within a small margin), the level is bumped up to reflect clustering of dip onsets.</li>
                 </ul>
                 
                 <p style={{ fontStyle: 'italic' }}>

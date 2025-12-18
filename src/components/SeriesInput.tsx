@@ -534,7 +534,7 @@ export async function fetchMultipleStockDataHybrid(
   return result;
 }
 
-export const SeriesInput: React.FC<SeriesInputProps> = ({ onAnalyze, selectedInterval = '12m' }) => {
+export const SeriesInput: React.FC<SeriesInputProps> = ({ onAnalyze, selectedInterval = '6m' }) => {
   const [seriesText, setSeriesText] = useState(EXAMPLE_SERIES.simple);
   const [k, setK] = useState(0.25);
   const [minWidth, setMinWidth] = useState(2);
