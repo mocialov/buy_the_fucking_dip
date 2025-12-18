@@ -384,19 +384,7 @@ function calculateSectorMetrics(
   };
 }
 
-function getHealthColor(score: number): string {
-  if (score >= 80) return '#10B981'; // Green - Healthy
-  if (score >= 60) return '#F59E0B'; // Yellow - Caution
-  if (score >= 40) return '#F97316'; // Orange - Warning
-  return '#EF4444'; // Red - Crisis
-}
-
-function getHealthLabel(score: number): string {
-  if (score >= 80) return 'Healthy';
-  if (score >= 60) return 'Caution';
-  if (score >= 40) return 'Warning';
-  return 'Crisis';
-}
+// Removed health label classification; only numeric score is displayed now.
 
 // Removed breadth color helper since breadth tile is no longer displayed
 
@@ -427,7 +415,6 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   };
 
   const metrics = calculateSectorMetrics(sectorAnalyses, selectedInterval);
-  const healthColor = getHealthColor(metrics.sectorHealthScore);
 
   const exportToPDF = () => {
     const doc = new jsPDF();
@@ -479,6 +466,11 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         benchmark = '—';
       }
       
+      // Combine Dip Score and vs Benchmark into one field
+      const dipScoreCombined = detail.dipScore > 0
+        ? (benchmark && benchmark !== '—' ? `${detail.dipScore.toFixed(1)} (${benchmark})` : `${detail.dipScore.toFixed(1)}`)
+        : '—';
+
       return [
         (index + 1).toString(),
         detail.ticker,
@@ -487,9 +479,8 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         detail.totalDips.toString(),
         detail.avgDipDepth > 0 ? `${(detail.avgDipDepth * 100).toFixed(1)}%` : '—',
         detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—',
-        detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—',
         detail.totalDipDays > 0 ? detail.totalDipDays.toString() : '—',
-        benchmark
+        dipScoreCombined
       ];
     });
     
@@ -504,9 +495,8 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         'Total Dips',
         'Avg Depth',
         'Max Depth',
-        'Dip Score',
         'Total Days',
-        'vs Benchmark'
+        'Dip Score (vs Benchmark)'
       ]],
       body: tableData,
       theme: 'striped',
@@ -528,8 +518,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         5: { halign: 'right', cellWidth: 15 },
         6: { halign: 'right', cellWidth: 15 },
         7: { halign: 'right', cellWidth: 15 },
-        8: { halign: 'right', cellWidth: 15 },
-        9: { halign: 'center', cellWidth: 22 }
+        8: { halign: 'center', cellWidth: 28 }
       },
       didDrawCell: (data) => {
         // Color-code rows based on ETF/status
@@ -583,51 +572,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         </p>
       </div>
 
-      {/* Key Metrics Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: isMobile ? '10px' : '15px',
-        marginBottom: '20px'
-      }}>
-        {/* Sector Health Score */}
-        <div style={{
-          padding: '15px',
-          background: `${healthColor}15`,
-          borderRadius: '6px',
-          border: `2px solid ${healthColor}`
-        }}>
-          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px', fontWeight: '600' }}>
-            SECTOR HEALTH SCORE
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: healthColor, marginBottom: '5px' }}>
-            {metrics.sectorHealthScore}
-          </div>
-          <div style={{ fontSize: '13px', color: healthColor, fontWeight: '600' }}>
-            {getHealthLabel(metrics.sectorHealthScore)}
-          </div>
-        </div>
-
-
-
-        {/* Correlation Level */}
-        <div style={{
-          padding: '15px',
-          background: '#F3F4F6',
-          borderRadius: '6px',
-          border: '2px solid #D1D5DB'
-        }}>
-          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '5px', fontWeight: '600' }}>
-            CORRELATION LEVEL
-          </div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#374151', marginBottom: '5px' }}>
-            {metrics.correlationLevel}
-          </div>
-          <div style={{ fontSize: '13px', color: '#6B7280' }}>
-            Dip clustering
-          </div>
-        </div>
-      </div>
+      
 
       {/* Detailed Metrics */}
       <div style={{
@@ -638,6 +583,14 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         background: '#F9FAFB',
         borderRadius: '6px'
       }}>
+        <MetricItem
+          label="Sector Health"
+          value={`${metrics.sectorHealthScore}%`}
+        />
+        <MetricItem
+          label="Correlation Level"
+          value={metrics.correlationLevel}
+        />
         <MetricItem
           label="Average Dip Depth"
           value={`${(metrics.averageDepth * 100).toFixed(2)}%`}
@@ -678,7 +631,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px', minWidth: isMobile ? '800px' : 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px', minWidth: isMobile ? '760px' : 'auto' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '50px' }}>Rank</th>
@@ -689,8 +642,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '85px' }}>Avg Depth</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '85px' }}>Max Depth</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '70px' }}>Total Days in Dips</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '85px' }}>Dip Score</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>vs Benchmark</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '140px' }}>Dip Score (vs Benchmark)</th>
               </tr>
             </thead>
             <tbody>
@@ -767,7 +719,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                   <React.Fragment key={`${detail.ticker}-${index}`}>
                     {showETFHeader && (
                       <tr style={{ height: '20px', background: '#1E40AF' }}>
-                        <td colSpan={10} style={{ padding: '5px 0', height: '20px', background: '#1E40AF' }}>
+                        <td colSpan={9} style={{ padding: '5px 0', height: '20px', background: '#1E40AF' }}>
                           <div style={{ 
                             textAlign: 'center', 
                             color: 'white', 
@@ -782,7 +734,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     )}
                     {showOngoingHistoricalSeparator && (
                       <tr style={{ height: '20px', background: '#374151' }}>
-                        <td colSpan={10} style={{ padding: '5px 0', height: '20px', background: '#374151' }}>
+                        <td colSpan={9} style={{ padding: '5px 0', height: '20px', background: '#374151' }}>
                           <div style={{ 
                             textAlign: 'center', 
                             color: 'white', 
@@ -797,7 +749,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     )}
                     {showETFStockSeparator && (
                       <tr style={{ height: '20px', background: '#1E3A8A' }}>
-                        <td colSpan={10} style={{ padding: '5px 0', height: '20px', background: '#1E3A8A' }}>
+                        <td colSpan={9} style={{ padding: '5px 0', height: '20px', background: '#1E3A8A' }}>
                           <div style={{ 
                             textAlign: 'center', 
                             color: 'white', 
@@ -921,21 +873,26 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     <td style={{
                       padding: isMobile ? '6px' : '10px',
                       textAlign: 'center',
-                      fontWeight: '600',
-                      color: getDipScoreTextColor(detail),
-                      fontSize: isMobile ? '11px' : 'inherit',
-                      width: '85px'
+                      width: '140px'
                     }}>
-                      {detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—'}
-                    </td>
-                    <td style={{
-                      padding: isMobile ? '6px' : '10px',
-                      textAlign: 'right',
-                      fontSize: isMobile ? '10px' : '12px',
-                      color: comparisonColor,
-                      fontWeight: '500'
-                    }}>
-                      {breadthComparison}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                        <span style={{
+                          fontWeight: 600,
+                          color: getDipScoreTextColor(detail),
+                          fontSize: isMobile ? '11px' : 'inherit'
+                        }}>
+                          {detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—'}
+                        </span>
+                        {!detail.isETF && breadthComparison !== '—' && (
+                          <span style={{
+                            fontSize: isMobile ? '10px' : '12px',
+                            color: comparisonColor,
+                            fontWeight: 500
+                          }}>
+                            {breadthComparison}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {isExpanded && tickerAnalysis && (() => {
@@ -944,7 +901,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                     
                     return (
                       <tr>
-                        <td colSpan={10} style={{ padding: '0', background: '#FFFFFF', borderBottom: '2px solid #E5E7EB' }}>
+                        <td colSpan={9} style={{ padding: '0', background: '#FFFFFF', borderBottom: '2px solid #E5E7EB' }}>
                           <div style={{ 
                             padding: isMobile ? '15px' : '20px',
                             borderLeft: '4px solid #3B82F6',

@@ -625,7 +625,7 @@ function App() {
                   <li><strong>Total Days in Dips:</strong> Sum of all days spent in dip conditions</li>
                   <li><strong>Dip Score:</strong> Combined weakness metric = (# of dips) × (avg depth) × (total dip days / period days) × 100. Higher score indicates chronic weakness with frequent, deep, or prolonged dips</li>
                   <li><strong>vs Benchmark:</strong> Compares stock's Dip Score against average ETF Dip Score. "Stock-specific" means ETFs had no dips. "X% worse/better" shows relative performance. "Similar" means within ±20%</li>
-                  <li><strong>Sector Health Score:</strong> 0–100 (higher is healthier). Weighted blend of: ongoing breadth (heavy penalty), duration-weighted average depth, and a robust tail depth (mix of max and 90th percentile). Weights and penalty multipliers are configurable.</li>
+                  <li><strong>Sector Health:</strong> 0–100 (higher is healthier). Weighted blend of: ongoing breadth (heavy penalty), duration-weighted average depth, and a robust tail depth (mix of max and 90th percentile). Weights and penalty multipliers are configurable.</li>
                   <li><strong>Correlation Level:</strong> Estimated from ongoing breadth with thresholds (Low/Moderate/High/Very High). If current breadth is high relative to period-wide incidence (within a small margin), the level is bumped up to reflect clustering of dip onsets.</li>
                 </ul>
                 
