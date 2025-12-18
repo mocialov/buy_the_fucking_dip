@@ -375,6 +375,52 @@ function App() {
                       )}
                     </div>
                   </div>
+
+                  {/* Add Custom Ticker */}
+                  <div className="control-group" style={{ maxWidth: '250px' }}>
+                    <label className="control-label-inline">Add Ticker</label>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <input
+                        type="text"
+                        value={customTicker}
+                        onChange={(e) => setCustomTicker(e.target.value.toUpperCase())}
+                        placeholder="e.g., TSLA"
+                        className="toolbar-select"
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddCustomTicker()}
+                        style={{ 
+                          width: '100%',
+                          paddingRight: '36px',
+                          textTransform: 'uppercase'
+                        }}
+                      />
+                      <button
+                        onClick={handleAddCustomTicker}
+                        disabled={!customTicker.trim() || isAddingCustom}
+                        className="btn"
+                        style={{ 
+                          position: 'absolute',
+                          right: '4px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          padding: '4px 8px',
+                          minWidth: 'auto',
+                          height: 'calc(100% - 8px)',
+                          background: !customTicker.trim() || isAddingCustom ? '#D1D5DB' : '#3B82F6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: !customTicker.trim() || isAddingCustom ? 'not-allowed' : 'pointer',
+                          fontSize: '16px',
+                          lineHeight: '1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {isAddingCustom ? '⋯' : '+'}
+                      </button>
+                    </div>
+                  </div>
                 </>
               )}
             </div>
@@ -548,93 +594,6 @@ function App() {
               sectorName={currentSectorName}
               selectedInterval={selectedTimeInterval}
             />
-            
-            {sectorAnalyses.map((analysis) => {
-              const currentIntervalAnalysis = analysis.intervalAnalyses.find(
-                ia => ia.interval === selectedTimeInterval
-              );
-              
-              return (
-                <div key={analysis.ticker} className="card">
-                  <h3 className="card-title">
-                    {analysis.isETF && (
-                      <span style={{ 
-                        fontSize: '0.75rem', 
-                        fontWeight: '700', 
-                        color: '#0284c7',
-                        backgroundColor: '#e0f2fe',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        marginRight: '8px',
-                        fontFamily: 'monospace',
-                        letterSpacing: '0.5px'
-                      }}>
-                        ETF
-                      </span>
-                    )}
-                    {analysis.ticker} - {analysis.companyName}
-                  </h3>
-                  
-                  {analysis.error ? (
-                    <div className="alert alert-error">
-                      ❌ Error: {analysis.error}
-                    </div>
-                  ) : currentIntervalAnalysis ? (
-                    <>
-                      <div className="chart-container">
-                        <DipChart series={currentIntervalAnalysis.series} dips={currentIntervalAnalysis.dips} />
-                      </div>
-                      {isDebugMode() && <RawDataDisplay series={currentIntervalAnalysis.series} />}
-                      <DipResults dips={currentIntervalAnalysis.dips} series={currentIntervalAnalysis.series} />
-                    </>
-                  ) : (
-                    <div className="alert alert-warning">
-                      ⚠️ No data available for {selectedTimeInterval} interval
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Add Custom Ticker Section */}
-        {sectorAnalyses.length > 0 && (
-          <div className="custom-ticker-section">
-            <h3 className="custom-ticker-title">
-              ➕ Add Custom Ticker
-            </h3>
-            
-            <div style={{ marginBottom: '16px', fontSize: '0.9375rem', color: 'var(--primary-blue-dark)' }}>
-              Add another ticker to the current sector analysis ({sectorAnalyses.length} tickers loaded)
-            </div>
-
-            <div className="custom-ticker-input-group">
-              <input
-                type="text"
-                value={customTicker}
-                onChange={(e) => setCustomTicker(e.target.value.toUpperCase())}
-                placeholder="Enter ticker symbol (e.g., TSLA)"
-                className="custom-ticker-input"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddCustomTicker()}
-              />
-              
-              <button
-                onClick={handleAddCustomTicker}
-                disabled={!customTicker.trim() || isAddingCustom}
-                className="btn btn-primary"
-                style={{ minWidth: '140px' }}
-              >
-                {isAddingCustom ? (
-                  <>
-                    <span className="loading-spinner"></span>
-                    Adding...
-                  </>
-                ) : (
-                  '➕ Add Ticker'
-                )}
-              </button>
-            </div>
           </div>
         )}
       </div>

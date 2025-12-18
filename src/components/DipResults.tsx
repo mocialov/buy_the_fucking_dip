@@ -5,6 +5,7 @@
 import React from 'react';
 import type { DipMetrics, DataPoint } from '../dip/types';
 import { getTrendContextHybrid } from '../dip/trendDetection';
+import { isDebugMode } from '../config/apiConfig';
 
 interface DipResultsProps {
   dips: DipMetrics[];
@@ -30,6 +31,7 @@ export const DipResults: React.FC<DipResultsProps> = ({ dips, series }) => {
   
   const values = getSeriesValues();
   const currentValue = values[values.length - 1];
+  const debugMode = isDebugMode();
 
   // Sort dips by date if dates are available, otherwise by start index
   const sortedDips = [...dips].sort((a, b) => {
@@ -150,13 +152,12 @@ export const DipResults: React.FC<DipResultsProps> = ({ dips, series }) => {
             <thead>
               <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #ccc' }}>
                 <th style={{ padding: '10px', textAlign: 'left' }}>#</th>
-                <th style={{ padding: '10px', textAlign: 'left' }}>Indices</th>
+                {debugMode && <th style={{ padding: '10px', textAlign: 'left' }}>Indices</th>}
                 {hasDates && <th style={{ padding: '10px', textAlign: 'left' }}>Dates</th>}
-                <th style={{ padding: '10px', textAlign: 'right' }}>Width</th>
-                <th style={{ padding: '10px', textAlign: 'right' }}>Depth</th>
                 <th style={{ padding: '10px', textAlign: 'right' }}>Min Value</th>
                 <th style={{ padding: '10px', textAlign: 'right' }}>Baseline</th>
-                <th style={{ padding: '10px', textAlign: 'right' }}>Current Value</th>
+                <th style={{ padding: '10px', textAlign: 'right' }}>Width</th>
+                <th style={{ padding: '10px', textAlign: 'right' }}>Depth</th>
                 <th style={{ padding: '10px', textAlign: 'right' }}>Confidence</th>
                 <th style={{ padding: '10px', textAlign: 'left' }}>Scale</th>
                 <th style={{ padding: '10px', textAlign: 'center' }}>Trend</th>
@@ -173,24 +174,29 @@ export const DipResults: React.FC<DipResultsProps> = ({ dips, series }) => {
                   }}
                 >
                   <td style={{ padding: '10px' }}>{idx + 1}</td>
-                  <td style={{ padding: '10px', fontFamily: 'monospace' }}>
-                    [{dip.start}:{dip.end}]
-                  </td>
+                  {debugMode && (
+                    <td style={{ padding: '10px', fontFamily: 'monospace' }}>
+                      [{dip.start}:{dip.end}]
+                    </td>
+                  )}
                   {hasDates && (
                     <td style={{ padding: '10px', fontFamily: 'monospace' }}>
                       {formatDate((series as DataPoint[])[dip.start].date)} - {formatDate((series as DataPoint[])[dip.end].date)}
                     </td>
                   )}
-                  <td style={{ padding: '10px', textAlign: 'right' }}>{dip.width}</td>
-                  <td style={{ padding: '10px', textAlign: 'right' }}>{dip.depth.toFixed(3)}</td>
                   <td style={{ padding: '10px', textAlign: 'right', fontFamily: 'monospace' }}>
                     {dip.seg_min.toFixed(3)}
-                    <span style={{ color: '#999', fontSize: '12px' }}> @{dip.seg_min_index}</span>
+                    {debugMode ? (
+                      <span style={{ color: '#999', fontSize: '12px' }}> @{dip.seg_min_index}</span>
+                    ) : (
+                      hasDates ? (
+                        <span style={{ color: '#999', fontSize: '12px' }}> @{formatDate((series as DataPoint[])[dip.seg_min_index].date)}</span>
+                      ) : null
+                    )}
                   </td>
                   <td style={{ padding: '10px', textAlign: 'right' }}>{dip.baseline.toFixed(3)}</td>
-                  <td style={{ padding: '10px', textAlign: 'right', fontFamily: 'monospace' }}>
-                    {currentValue.toFixed(3)}
-                  </td>
+                  <td style={{ padding: '10px', textAlign: 'right' }}>{dip.width}</td>
+                  <td style={{ padding: '10px', textAlign: 'right' }}>{dip.depth.toFixed(3)}</td>
                   <td style={{ padding: '10px', textAlign: 'right' }}>
                     <span
                       style={{

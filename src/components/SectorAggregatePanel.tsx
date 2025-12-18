@@ -7,6 +7,8 @@ import type { SectorAnalysis } from './SeriesInput';
 import type { TimeInterval } from '../dip/types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { DipChart } from './DipChart';
+import { DipResults } from './DipResults';
 
 interface SectorAggregatePanelProps {
   sectorAnalyses: SectorAnalysis[];
@@ -41,7 +43,8 @@ interface TickerDipDetail {
   dipWidth: number;
   currentValue: number;
   dipStartValue: number;
-  percentFromPeak: number;
+  percentSinceDipStart: number;
+  percentDrawdownBaseline: number;
   isETF: boolean;
   // Aggregated metrics across all dips for this ticker
   totalDips: number;           // How many dips detected
@@ -80,13 +83,14 @@ function calculateSectorMetrics(
     };
   }
 
-  let tickersWithDips = 0;
-  let totalActiveDips = 0;
-  let totalOngoingDepth = 0;
-  let totalOngoingDuration = 0;
-  let maxOngoingDepth = 0;
-  let deepestTicker = '';
-  let ongoingDipCount = 0;
+  // STOCK-ONLY aggregates
+  let tickersWithDips = 0; // will represent stocks with ongoing dips
+  let totalActiveDips = 0; // stock-only count of ongoing dips
+  let totalOngoingDepth = 0; // stock-only ongoing depth sum (normalized)
+  let totalOngoingDuration = 0; // stock-only ongoing duration sum (days)
+  let maxOngoingDepth = 0; // stock-only max ongoing depth
+  let deepestTicker = ''; // stock-only deepest ongoing dip ticker
+  let ongoingDipCount = 0; // stock-only ongoing dip count
   
   // ETF-specific tracking
   let etfOngoingDepthSum = 0;
@@ -122,13 +126,13 @@ function calculateSectorMetrics(
     // Track if ticker has any ongoing dip (for breadth calculation)
     const hasAnyOngoingDip = ongoingDips.length > 0;
     if (hasAnyOngoingDip) {
-      tickersWithDips++;
       if (isETF) {
         etfsWithDips++;
       } else {
         stocksWithDips++;
+        tickersWithDips++;
+        totalActiveDips += ongoingDips.length;
       }
-      totalActiveDips += ongoingDips.length;
     }
 
     // Process ALL dips for this ticker and aggregate into summary metrics
@@ -180,18 +184,22 @@ function calculateSectorMetrics(
     // Track statistics for ongoing dips only (for aggregate sector metrics)
     const ongoingAggDips = allDips.filter(d => d.isOngoing);
     ongoingAggDips.forEach(aggDip => {
-      totalOngoingDepth += aggDip.normalizedDepth;
-      totalOngoingDuration += aggDip.duration;
-      ongoingDipCount++;
-      
+      // STOCK aggregates
+      if (!isETF) {
+        totalOngoingDepth += aggDip.normalizedDepth;
+        totalOngoingDuration += aggDip.duration;
+        ongoingDipCount++;
+
+        if (aggDip.normalizedDepth > maxOngoingDepth) {
+          maxOngoingDepth = aggDip.normalizedDepth;
+          deepestTicker = analysis.ticker;
+        }
+      }
+
+      // ETF aggregates (for benchmark display only)
       if (isETF) {
         etfOngoingDepthSum += aggDip.normalizedDepth;
         etfOngoingDipCount++;
-      }
-
-      if (aggDip.normalizedDepth > maxOngoingDepth) {
-        maxOngoingDepth = aggDip.normalizedDepth;
-        deepestTicker = analysis.ticker;
       }
     });
 
@@ -200,19 +208,25 @@ function calculateSectorMetrics(
     let dipDepth = 0;
     let dipWidth = 0;
     let dipStartValue = currentValue;
-    let percentFromPeak = 0;
+    let percentSinceDipStart = 0;
+    let percentDrawdownBaseline = 0;
     
-    if (ongoingAggDips.length > 0) {
-      // Find the deepest ongoing dip
-      const deepestOngoing = dips.filter(dip => {
-        const dipEnd = dip.start + dip.width - 1;
-        return dipEnd >= series.length - 3;
-      }).reduce((max, dip) => dip.depth > max.depth ? dip : max, dips[0]);
-      
+    // Use DipMetrics.is_ongoing to ensure we select from the correct subset
+    const ongoingList = dips.filter(dip => dip.is_ongoing);
+    if (ongoingList.length > 0) {
+      // Find the deepest ongoing dip using a reducer seeded from the ongoing set
+      const deepestOngoing = ongoingList.reduce(
+        (max, dip) => (dip.depth > max.depth ? dip : max),
+        ongoingList[0]
+      );
+
       dipDepth = deepestOngoing.baseline > 0 ? deepestOngoing.depth / deepestOngoing.baseline : 0;
       dipWidth = deepestOngoing.width;
       dipStartValue = series[deepestOngoing.start].value;
-      percentFromPeak = ((currentValue - dipStartValue) / dipStartValue) * 100;
+      percentSinceDipStart = ((currentValue - dipStartValue) / dipStartValue) * 100;
+      percentDrawdownBaseline = deepestOngoing.baseline > 0
+        ? ((currentValue - deepestOngoing.baseline) / deepestOngoing.baseline) * 100
+        : 0;
     }
 
     // Add single aggregated entry for this ticker (always, whether it has dips or not)
@@ -224,7 +238,8 @@ function calculateSectorMetrics(
       dipWidth,
       currentValue,
       dipStartValue,
-      percentFromPeak,
+      percentSinceDipStart,
+      percentDrawdownBaseline,
       isETF,
       totalDips,
       avgDipDepth,
@@ -235,7 +250,8 @@ function calculateSectorMetrics(
     });
   });
 
-  const breadthPercentage = (tickersWithDips / totalTickers) * 100;
+  // STOCK-ONLY displayed aggregates
+  const breadthPercentage = stockCount > 0 ? (stocksWithDips / stockCount) * 100 : 0;
   const averageDepth = ongoingDipCount > 0 ? totalOngoingDepth / ongoingDipCount : 0;
   const averageDuration = ongoingDipCount > 0 ? totalOngoingDuration / ongoingDipCount : 0;
   const etfAverageDepth = etfOngoingDipCount > 0 ? etfOngoingDepthSum / etfOngoingDipCount : 0;
@@ -255,9 +271,9 @@ function calculateSectorMetrics(
 
   // Sector Health Score (0-100, where 100 = healthy, 0 = crisis)
   // Based on: breadth (60%), average depth (30%), max depth (10%)
-  const breadthScore = Math.max(0, 100 - breadthPercentage * 1.5); // Heavy penalty for breadth
-  const avgDepthScore = Math.max(0, 100 - averageDepth * 500); // Depth as percentage
-  const maxDepthScore = Math.max(0, 100 - maxOngoingDepth * 400);
+  const breadthScore = Math.max(0, 100 - breadthPercentage * 1.5); // Heavy penalty for breadth (stocks only)
+  const avgDepthScore = Math.max(0, 100 - averageDepth * 500); // Depth as percentage (stocks only)
+  const maxDepthScore = Math.max(0, 100 - maxOngoingDepth * 400); // Stocks only
   const sectorHealthScore = Math.round(
     breadthScore * 0.6 + avgDepthScore * 0.3 + maxDepthScore * 0.1
   );
@@ -287,7 +303,8 @@ function calculateSectorMetrics(
   });
 
   return {
-    totalTickers,
+    // Display stock-only aggregates
+    totalTickers: stockCount,
     tickersWithDips,
     activeDipCount: totalActiveDips,
     breadthPercentage,
@@ -333,12 +350,25 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   selectedInterval
 }) => {
   const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
+  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const toggleRow = (ticker: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(ticker)) {
+        next.delete(ticker);
+      } else {
+        next.add(ticker);
+      }
+      return next;
+    });
+  };
 
   const metrics = calculateSectorMetrics(sectorAnalyses, selectedInterval);
   const healthColor = getHealthColor(metrics.sectorHealthScore);
@@ -362,9 +392,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
     // Prepare table data
     const tableData = metrics.tickerDetails.map((detail, index) => {
       let status = '';
-      if (detail.isETF) {
-        status = '—';
-      } else if (detail.hasOngoingDip) {
+      if (detail.hasOngoingDip) {
         status = 'ONGOING';
       } else if (detail.totalDips > 0) {
         status = 'RECOVERED';
@@ -401,7 +429,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         detail.ticker,
         detail.companyName,
         status,
-        detail.isETF ? '—' : detail.totalDips.toString(),
+        detail.totalDips.toString(),
         detail.avgDipDepth > 0 ? `${(detail.avgDipDepth * 100).toFixed(1)}%` : '—',
         detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—',
         detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—',
@@ -439,13 +467,13 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       columnStyles: {
         0: { halign: 'center', cellWidth: 10 },
         1: { halign: 'left', cellWidth: 18, fontStyle: 'bold' },
-        2: { halign: 'left', cellWidth: 40 },
-        3: { halign: 'center', cellWidth: 20 },
-        4: { halign: 'center', cellWidth: 16 },
-        5: { halign: 'right', cellWidth: 16 },
-        6: { halign: 'right', cellWidth: 16 },
-        7: { halign: 'right', cellWidth: 16 },
-        8: { halign: 'right', cellWidth: 16 },
+        2: { halign: 'left', cellWidth: 48 },
+        3: { halign: 'center', cellWidth: 18 },
+        4: { halign: 'center', cellWidth: 12 },
+        5: { halign: 'right', cellWidth: 15 },
+        6: { halign: 'right', cellWidth: 15 },
+        7: { halign: 'right', cellWidth: 15 },
+        8: { halign: 'right', cellWidth: 15 },
         9: { halign: 'center', cellWidth: 22 }
       },
       didDrawCell: (data) => {
@@ -496,7 +524,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           {sectorName} - Sector Aggregate Analysis
         </h2>
         <p style={{ margin: 0, color: '#6B7280', fontSize: isMobile ? '12px' : '14px' }}>
-          Composite metrics derived from {metrics.totalTickers} constituent tickers
+          Composite metrics derived from {metrics.stockCount} constituent tickers
         </p>
       </div>
 
@@ -539,7 +567,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
             {metrics.breadthPercentage.toFixed(1)}%
           </div>
           <div style={{ fontSize: '13px', color: '#6B7280' }}>
-            {metrics.tickersWithDips} of {metrics.totalTickers} tickers
+            {metrics.tickersWithDips} of {metrics.stockCount} tickers
           </div>
         </div>
 
@@ -592,22 +620,18 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         <MetricItem
           label="Average Dip Depth"
           value={`${(metrics.averageDepth * 100).toFixed(2)}%`}
-          icon="📉"
         />
         <MetricItem
           label="Max Dip Depth"
           value={`${(metrics.maxDepth * 100).toFixed(2)}%`}
-          icon="⚠️"
         />
         <MetricItem
           label="Deepest Ticker"
           value={metrics.deepestTicker || 'N/A'}
-          icon="🎯"
         />
         <MetricItem
           label="Avg Dip Duration"
           value={`${metrics.averageDuration.toFixed(1)} days`}
-          icon="⏱️"
         />
       </div>
 
@@ -620,7 +644,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
         border: '1px solid #BFDBFE'
       }}>
         <div style={{ fontSize: isMobile ? '12px' : '13px', color: '#1E40AF', lineHeight: '1.6' }}>
-          <strong>💡 Interpretation:</strong>
+          <strong>Interpretation:</strong>
           {metrics.breadthPercentage >= 50 ? (
             <span> High breadth ({metrics.breadthPercentage.toFixed(0)}%) suggests sector-wide pressure. This may indicate systemic issues or broader market correction affecting the entire {sectorName.toLowerCase()} sector.</span>
           ) : metrics.breadthPercentage >= 30 ? (
@@ -647,27 +671,47 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           fontSize: isMobile ? '12px' : '14px',
           color: '#374151'
         }}>
-          📋 Aggregated Dip Performance by Ticker
+          Aggregated Dip Performance by Ticker
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: isMobile ? '11px' : '13px', minWidth: isMobile ? '800px' : 'auto' }}>
             <thead>
               <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Rank</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Ticker</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '50px' }}>Rank</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '80px' }}>Ticker</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'left', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Company</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Status</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Total Dips</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Avg Depth</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Max Depth</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Dip Score</th>
-                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>Total Days in Dips</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '100px' }}>Status</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '70px' }}>Total Dips</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '85px' }}>Avg Depth</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '85px' }}>Max Depth</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '70px' }}>Total Days in Dips</th>
+                <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit', width: '85px' }}>Dip Score</th>
                 <th style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: '#6B7280', fontSize: isMobile ? '10px' : 'inherit' }}>vs Benchmark</th>
               </tr>
             </thead>
             <tbody>
-              {metrics.tickerDetails.map((detail, index) => {
+              {(() => {
+                // Calculate min/max dipScore for gradient (excluding zeros)
+                const validScores = metrics.tickerDetails
+                  .map(d => d.dipScore)
+                  .filter(s => s > 0);
+                const minScore = validScores.length > 0 ? Math.min(...validScores) : 0;
+                const maxScore = validScores.length > 0 ? Math.max(...validScores) : 0;
+                
+                // Helper function to get color based on relative position
+                const getDipScoreColor = (score: number): string => {
+                  if (score === 0 || maxScore === minScore) return '#6B7280';
+                  
+                  // Normalize score to 0-1 range (0 = best/orange, 1 = worst/red)
+                  const normalized = (score - minScore) / (maxScore - minScore);
+                  
+                  if (normalized <= 0.33) return '#F59E0B'; // Orange - best third
+                  if (normalized <= 0.67) return '#EF4444'; // Light red - middle third
+                  return '#DC2626'; // Dark red - worst third
+                };
+                
+                return metrics.tickerDetails.map((detail, index) => {
                 // For stocks: compare aggregated dipScore vs ETF average dipScore
                 let breadthComparison = '';
                 let comparisonColor = '#6B7280';
@@ -681,16 +725,16 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                   
                   if (etfAvgScore === 0) {
                     // Stock has dips but ETFs don't - stock-specific weakness
-                    breadthComparison = `⚠️ Stock-specific (ETFs healthy)`;
+                    breadthComparison = `Stock-specific (ETFs healthy)`;
                     comparisonColor = '#DC2626';
                   } else {
                     // Compare stock dipScore vs ETF average dipScore
                     const comparison = ((detail.dipScore - etfAvgScore) / etfAvgScore) * 100;
                     if (comparison > 20) {
-                      breadthComparison = `📉 ${comparison.toFixed(0)}% worse`;
+                      breadthComparison = `${comparison.toFixed(0)}% worse`;
                       comparisonColor = '#DC2626';
                     } else if (comparison < -20) {
-                      breadthComparison = `✅ ${Math.abs(comparison).toFixed(0)}% better`;
+                      breadthComparison = `${Math.abs(comparison).toFixed(0)}% better`;
                       comparisonColor = '#059669';
                     } else {
                       breadthComparison = `≈ Similar`;
@@ -712,6 +756,9 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                 const showOngoingHistoricalSeparator = index > 0 && prevDetail && !detail.isETF && !prevDetail.isETF && prevDetail.hasOngoingDip && !detail.hasOngoingDip;
                 const showETFStockSeparator = index > 0 && prevDetail && prevDetail.isETF && !detail.isETF;
                 const showETFHeader = index === 0 && detail.isETF;
+                
+                const isExpanded = expandedRows.has(detail.ticker);
+                const tickerAnalysis = sectorAnalyses.find(a => a.ticker === detail.ticker);
                 
                 return (
                   <React.Fragment key={`${detail.ticker}-${index}`}>
@@ -761,28 +808,55 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                       </tr>
                     )}
                     <tr 
+                      onClick={() => toggleRow(detail.ticker)}
                       style={{
                         borderBottom: '1px solid #F3F4F6',
                         background: detail.isETF 
                           ? '#EFF6FF'  // Light blue for ETFs
                           : detail.hasOngoingDip 
                             ? '#FEF2F2'  // Light red for ongoing dips
-                            : (detail.totalDips > 0 ? '#FEF9C3' : 'white')  // Light yellow for recovered, white for no dips
+                            : (detail.totalDips > 0 ? '#FEF9C3' : 'white'),  // Light yellow for recovered, white for no dips
+                        cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        const currentBg = e.currentTarget.style.background;
+                        if (currentBg.includes('#EFF6FF')) {
+                          e.currentTarget.style.background = '#DBEAFE';
+                        } else if (currentBg.includes('#FEF2F2')) {
+                          e.currentTarget.style.background = '#FEE2E2';
+                        } else if (currentBg.includes('#FEF9C3')) {
+                          e.currentTarget.style.background = '#FEF08A';
+                        } else {
+                          e.currentTarget.style.background = '#F9FAFB';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (detail.isETF) {
+                          e.currentTarget.style.background = '#EFF6FF';
+                        } else if (detail.hasOngoingDip) {
+                          e.currentTarget.style.background = '#FEF2F2';
+                        } else if (detail.totalDips > 0) {
+                          e.currentTarget.style.background = '#FEF9C3';
+                        } else {
+                          e.currentTarget.style.background = 'white';
+                        }
                       }}
                     >
-                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#6B7280', fontWeight: '500' }}>
-                      {index + 1}
+                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#6B7280', fontWeight: '500', width: '50px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '14px' }}>{isExpanded ? '▼' : '▶'}</span>
+                        {index + 1}
+                      </div>
                     </td>
-                    <td style={{ padding: isMobile ? '6px' : '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace', fontSize: isMobile ? '12px' : 'inherit' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', fontWeight: '600', color: '#1F2937', fontFamily: 'monospace', fontSize: isMobile ? '12px' : 'inherit', width: '80px' }}>
                       {detail.ticker}
                     </td>
-                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#4B5563', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: isMobile ? '11px' : 'inherit' }}>
+                    <td style={{ padding: isMobile ? '6px' : '10px', color: '#4B5563', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: isMobile ? '11px' : 'inherit' }}>
                       {detail.companyName}
                     </td>
-                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right' }}>
-                      {detail.isETF ? (
-                        <span style={{ color: '#9CA3AF' }}>—</span>
-                      ) : detail.hasOngoingDip ? (
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', width: '100px' }}>
+                      {detail.hasOngoingDip ? (
                         <span style={{ 
                           padding: '3px 8px', 
                           borderRadius: '4px', 
@@ -791,7 +865,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                           fontSize: '11px',
                           fontWeight: '600'
                         }}>
-                          📉 ONGOING
+                          ONGOING
                         </span>
                       ) : detail.totalDips > 0 ? (
                         <span style={{ 
@@ -802,7 +876,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                           fontSize: '11px',
                           fontWeight: '600'
                         }}>
-                          📜 RECOVERED
+                          RECOVERED
                         </span>
                       ) : (
                         <span style={{ 
@@ -813,42 +887,43 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                           fontSize: '11px',
                           fontWeight: '600'
                         }}>
-                          ✅ NO DIP
+                          NO DIP
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', fontWeight: '600', color: detail.isETF ? '#9CA3AF' : '#374151', fontSize: isMobile ? '11px' : 'inherit' }}>
-                      {detail.isETF ? '—' : detail.totalDips}
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', color: '#6B7280', fontSize: isMobile ? '11px' : 'inherit', width: '70px' }}>
+                      {detail.totalDips}
                     </td>
                     <td style={{
                       padding: isMobile ? '6px' : '10px',
-                      textAlign: 'right',
-                      fontWeight: '600',
-                      color: detail.avgDipDepth > 0.15 ? '#DC2626' : detail.avgDipDepth > 0.08 ? '#F59E0B' : '#059669',
-                      fontSize: isMobile ? '11px' : 'inherit'
+                      textAlign: 'center',
+                      color: '#6B7280',
+                      fontSize: isMobile ? '11px' : 'inherit',
+                      width: '85px'
                     }}>
                       {detail.avgDipDepth > 0 ? `${(detail.avgDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
                     <td style={{
                       padding: isMobile ? '6px' : '10px',
-                      textAlign: 'right',
-                      fontWeight: '600',
-                      color: detail.maxDipDepth > 0.20 ? '#DC2626' : detail.maxDipDepth > 0.10 ? '#F59E0B' : '#059669',
-                      fontSize: isMobile ? '11px' : 'inherit'
+                      textAlign: 'center',
+                      color: '#6B7280',
+                      fontSize: isMobile ? '11px' : 'inherit',
+                      width: '85px'
                     }}>
                       {detail.maxDipDepth > 0 ? `${(detail.maxDipDepth * 100).toFixed(1)}%` : '—'}
                     </td>
+                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'center', color: '#6B7280', fontSize: isMobile ? '11px' : 'inherit', width: '70px' }}>
+                      {detail.totalDipDays > 0 ? detail.totalDipDays : '—'}
+                    </td>
                     <td style={{
                       padding: isMobile ? '6px' : '10px',
-                      textAlign: 'right',
+                      textAlign: 'center',
                       fontWeight: '600',
-                      color: detail.dipScore > 10 ? '#DC2626' : detail.dipScore > 5 ? '#F59E0B' : '#059669',
-                      fontSize: isMobile ? '11px' : 'inherit'
+                      color: getDipScoreColor(detail.dipScore),
+                      fontSize: isMobile ? '11px' : 'inherit',
+                      width: '85px'
                     }}>
                       {detail.dipScore > 0 ? detail.dipScore.toFixed(1) : '—'}
-                    </td>
-                    <td style={{ padding: isMobile ? '6px' : '10px', textAlign: 'right', color: '#6B7280', fontSize: isMobile ? '11px' : 'inherit' }}>
-                      {detail.totalDipDays > 0 ? detail.totalDipDays : '—'}
                     </td>
                     <td style={{
                       padding: isMobile ? '6px' : '10px',
@@ -860,9 +935,64 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
                       {breadthComparison}
                     </td>
                   </tr>
+                  {isExpanded && tickerAnalysis && (() => {
+                    const intervalData = tickerAnalysis.intervalAnalyses.find(ia => ia.interval === selectedInterval);
+                    if (!intervalData) return null;
+                    
+                    return (
+                      <tr>
+                        <td colSpan={10} style={{ padding: '0', background: '#FFFFFF', borderBottom: '2px solid #E5E7EB' }}>
+                          <div style={{ 
+                            padding: isMobile ? '15px' : '20px',
+                            borderLeft: '4px solid #3B82F6',
+                            background: '#F9FAFB'
+                          }}>
+                            <div style={{ 
+                              marginBottom: '15px',
+                              paddingBottom: '10px',
+                              borderBottom: '2px solid #E5E7EB'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                {detail.isETF && (
+                                  <span style={{ 
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    color: '#0284c7',
+                                    backgroundColor: '#e0f2fe',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontFamily: 'monospace',
+                                    letterSpacing: '0.5px'
+                                  }}>
+                                    ETF
+                                  </span>
+                                )}
+                                <strong style={{ fontSize: isMobile ? '16px' : '20px', color: '#1F2937' }}>
+                                  {detail.ticker} - {detail.companyName}
+                                </strong>
+                              </div>
+                            </div>
+                            
+                            <div style={{ 
+                              background: 'white',
+                              borderRadius: '8px',
+                              padding: isMobile ? '10px' : '15px',
+                              marginBottom: '15px',
+                              border: '1px solid #E5E7EB'
+                            }}>
+                              <DipChart series={intervalData.series} dips={intervalData.dips} />
+                            </div>
+                            
+                            <DipResults dips={intervalData.dips} series={intervalData.series} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
                   </React.Fragment>
                 );
-              })}
+              });
+              })()}
             </tbody>
           </table>
         </div>
@@ -881,14 +1011,13 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           gap: '10px'
         }}>
           <div>
-            💡 <strong>Legend:</strong> Shows aggregated dip metrics per ticker.
-            <strong>📊 = ETF</strong> (shown with light blue background at top of table).
+            💡 <strong>Legend:</strong> Aggregated dip metrics per ticker.
+            <strong>ETFs</strong> appear at the top under “SECTOR ETFs (BENCHMARKS)” with a light blue row and an “ETF” badge.
             <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
-            <strong> vs Benchmark</strong> = compares stock's Dip Score to average ETF Dip Score.
-            "Stock-specific" = ETFs had no dips.
-            "X% worse/better" = stock's score is X% higher/lower than ETF average.
-            "Similar" = within ±20% of ETF average. |
-            <strong>Thick line</strong> separates ongoing from recovered dips. <strong>Thin line</strong> separates ETFs from stocks.
+            <strong>vs Benchmark</strong> compares a stock’s Dip Score to the average ETF Dip Score.
+            "Stock-specific" = ETFs had no dips. "X% worse/better" = relative to ETF average. "Similar" = within ±20% of ETF average. |
+            <strong>Separators</strong>: a navy header marks the start of stocks; a dark separator marks the transition to recovered/no dips.
+            <strong>Color cue</strong>: Dip Score text color indicates relative severity (orange → light red → dark red).
           </div>
           <button
             onClick={exportToPDF}
@@ -910,7 +1039,7 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.background = '#2563EB'}
             onMouseLeave={(e) => e.currentTarget.style.background = '#3B82F6'}
           >
-            📄 Export to PDF
+            Export to PDF
           </button>
         </div>
       </div>
@@ -918,10 +1047,10 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   );
 };
 
-const MetricItem: React.FC<{ label: string; value: string; icon: string }> = ({ label, value, icon }) => (
+const MetricItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
     <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px', fontWeight: '600' }}>
-      {icon} {label}
+      {label}
     </div>
     <div style={{ fontSize: '16px', fontWeight: '600', color: '#374151' }}>
       {value}
