@@ -51,6 +51,26 @@ function App() {
     }
   }, [selectedSector]);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if click is outside dropdown areas
+      const isInsideDropdown = target.closest('.custom-dropdown');
+      
+      if (!isInsideDropdown) {
+        if (isSectorDropdownOpen) setIsSectorDropdownOpen(false);
+        if (isIntervalDropdownOpen) setIsIntervalDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSectorDropdownOpen, isIntervalDropdownOpen]);
+
   // Auto-rotate images every 5 seconds
   useEffect(() => {
     if (images.length <= 1) return;
@@ -362,8 +382,9 @@ function App() {
                   value={selectedSector}
                   onChange={(e) => setSelectedSector(e.target.value)}
                   className="toolbar-select native-select"
+                  disabled={isLoadingSector}
                 >
-                  <option value="">Select sector...</option>
+                  <option value="">{isLoadingSector ? `Loading ${selectedSector}...` : 'Select sector...'}</option>
                   {Object.keys(MARKET_SECTORS).map(sector => (
                     <option key={sector} value={sector}>{sector}</option>
                   ))}
@@ -374,8 +395,24 @@ function App() {
                   <button
                     onClick={() => setIsSectorDropdownOpen(!isSectorDropdownOpen)}
                     className="toolbar-select"
+                    disabled={isLoadingSector}
                   >
-                    {selectedSector || 'Select sector...'}
+                    {isLoadingSector ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="loading-spinner" style={{
+                          display: 'inline-block',
+                          width: '14px',
+                          height: '14px',
+                          border: '2px solid rgba(37, 99, 235, 0.2)',
+                          borderTopColor: '#2563EB',
+                          borderRadius: '50%',
+                          animation: 'spin 0.8s linear infinite'
+                        }}></span>
+                        Loading {selectedSector}...
+                      </span>
+                    ) : (
+                      selectedSector || 'Select sector...'
+                    )}
                   </button>
                   {isSectorDropdownOpen && (
                     <>
@@ -673,6 +710,7 @@ function App() {
               sectorAnalyses={sectorAnalyses}
               sectorName={currentSectorName}
               selectedInterval={selectedTimeInterval}
+              isLoadingSector={isLoadingSector}
             />
           </div>
         )}

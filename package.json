@@ -7,7 +7,10 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "sync-data": "tsx scripts/sync-data.ts"
+    "sync-data": "tsx scripts/sync-data.ts",
+    "screenshot": "node scripts/generate-screenshot.js",
+    "screenshot:ticker": "node scripts/generate-screenshot.js --sector=Technology --interval=12m --ticker=MSFT",
+    "screenshot:batch": "node scripts/batch-screenshot.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
@@ -22,6 +25,7 @@
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "puppeteer": "^24.34.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^5.3.1",

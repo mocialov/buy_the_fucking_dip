@@ -96,47 +96,61 @@ export async function fetchMultipleStockDataFromSupabase(tickers: string[]): Pro
     const normalizedTickers = tickers.map(t => t.toUpperCase());
     console.log('Normalized tickers:', normalizedTickers);
     
-    // Fetch all data using pagination to bypass server-side max-rows limit
-    // Supabase PostgREST max-rows set to 10000, using 9500 for safety margin
-    const allData: any[] = [];
-    const pageSize = 9500;
-    let page = 0;
-    let hasMore = true;
+    // First, get the total count to determine number of pages needed
+    const { count, error: countError } = await supabase
+      .from('stock_data')
+      .select('*', { count: 'exact', head: true })
+      .in('ticker', normalizedTickers);
+
+    if (countError) {
+      console.error('Error getting count:', countError);
+      throw countError;
+    }
+
+    const totalRows = count || 0;
+    console.log(`Total rows for ${tickers.length} tickers: ${totalRows}`);
     
-    while (hasMore) {
-      const { data, error } = await supabase
+    if (totalRows === 0) {
+      console.log('No data found for any tickers');
+      return result;
+    }
+
+    // Fetch all data using parallel pagination to bypass server-side max-rows limit
+    // Supabase PostgREST max-rows set to 10000, using 9500 for safety margin
+    const pageSize = 9500;
+    const numPages = Math.ceil(totalRows / pageSize);
+    
+    console.log(`Fetching ${numPages} pages in parallel (${pageSize} rows per page)...`);
+    
+    // Create array of page fetch promises to run in parallel
+    const pagePromises = Array.from({ length: numPages }, (_, page) => 
+      supabase
         .from('stock_data')
         .select('ticker, date, close_price')
         .in('ticker', normalizedTickers)
         .order('date', { ascending: true })
-        .range(page * pageSize, (page + 1) * pageSize - 1);
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+        .then(({ data, error }) => {
+          if (error) {
+            console.error(`Error fetching page ${page + 1}:`, error);
+            return [];
+          }
+          console.log(`✓ Fetched page ${page + 1}/${numPages}: ${data?.length || 0} rows`);
+          return data || [];
+        })
+    );
 
-      if (error) {
-        console.error('Supabase batch fetch error:', error);
-        break;
-      }
-
-      if (!data || data.length === 0) {
-        hasMore = false;
-      } else {
-        allData.push(...data);
-        console.log(`Fetched page ${page + 1}: ${data.length} rows (total: ${allData.length})`);
-        
-        // If we got less than pageSize, we've reached the end
-        if (data.length < pageSize) {
-          hasMore = false;
-        } else {
-          page++;
-        }
-      }
-    }
+    // Wait for all pages to complete in parallel
+    const pageResults = await Promise.all(pagePromises);
+    
+    // Flatten all pages into single array
+    const allData = pageResults.flat();
+    console.log(`Total rows fetched: ${allData.length}`);
 
     if (allData.length === 0) {
       console.log('No data found for any tickers');
       return result;
     }
-
-    console.log(`Total rows fetched: ${allData.length}`);
 
     // Group data by ticker
     const grouped = new Map<string, any[]>();

@@ -15,7 +15,6 @@ interface SectorAggregatePanelProps {
   sectorAnalyses: SectorAnalysis[];
   sectorName: string;
   selectedInterval: TimeInterval;
-  isLoadingSector?: boolean;
 }
 
 interface SectorMetrics {
@@ -387,8 +386,7 @@ function calculateSectorMetrics(
 export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
   sectorAnalyses,
   sectorName,
-  selectedInterval,
-  isLoadingSector = false
+  selectedInterval
 }) => {
   const [isMobile, setIsMobile] = React.useState(window.innerWidth <= 768);
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
@@ -570,7 +568,6 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
     <div 
       ref={panelRef}
       style={{
-      position: 'relative',
       background: 'white',
       borderRadius: '8px',
       padding: isMobile ? '12px' : '20px',
@@ -578,46 +575,6 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
       border: '2px solid #E5E7EB',
       boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
     }}>
-      {/* Loading Overlay */}
-      {isLoadingSector && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '8px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          gap: '16px'
-        }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            border: '4px solid rgba(37, 99, 235, 0.1)',
-            borderTopColor: '#2563EB',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite'
-          }}></div>
-          <div style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#2563EB'
-          }}>
-            Loading {sectorName} data...
-          </div>
-          <div style={{
-            fontSize: '14px',
-            color: '#6B7280'
-          }}>
-            Analyzing individual stocks
-          </div>
-        </div>
-      )}
       <div style={{ marginBottom: '15px', borderBottom: '2px solid #E5E7EB', paddingBottom: '12px' }}>
         <h2 style={{ margin: '0 0 5px 0', color: '#1a1a1a', fontSize: isMobile ? '18px' : '24px' }}>
           {sectorName} - Sector Aggregate Analysis
@@ -1004,10 +961,13 @@ export const SectorAggregatePanel: React.FC<SectorAggregatePanelProps> = ({
           gap: '10px'
         }}>
           <div>
-            <strong>Dip Score</strong> measures overall dip severity: (number of dips) × (average depth) × (proportion of time in dips) × 100. Higher scores indicate worse performance.<br/>
-            <strong>vs Benchmark</strong> compares each stock's Dip Score to the sector ETF average. Values show percentage difference (e.g., "25% worse" means the stock's score is 25% higher than ETFs). <br/>
-            <strong>"Stock-specific"</strong> indicates ETFs had no dips. Differences within ±20% are marked as "Similar".<br/>
-            <strong>Score colors:</strong> Green = better than ETF average | Orange = similar to ETF average | Red = worse than ETF average
+            💡 <strong>Legend:</strong> Aggregated dip metrics per ticker.
+            <strong>ETFs</strong> appear at the top under “SECTOR ETFs (BENCHMARKS)” with a light blue row and an “ETF” badge.
+            <strong>Dip Score</strong> = (# of dips) × (avg depth) × (total days in dips / total days analyzed) × 100. Higher score = worse chronic weakness.
+            <strong>vs Benchmark</strong> compares a stock’s Dip Score to the average ETF Dip Score.
+            "Stock-specific" = ETFs had no dips. "X% worse/better" = relative to ETF average. "Similar" = within ±20% of ETF average. |
+            <strong>Separators</strong>: a navy header marks the start of stocks; a dark separator marks the transition to recovered/no dips.
+            <strong>Color cue</strong>: For stocks, Dip Score text color compares to ETF average (green → orange → red).
           </div>
           <button
             onClick={exportToPDF}
