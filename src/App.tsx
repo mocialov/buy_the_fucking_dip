@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { DEFAULT_TITLE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from './config/seo';
 import { findAllDips, findDipsOptimalForInterval } from './dip/detectDip';
 import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchMultipleStockDataHybrid, fetchStockDataHybrid } from './components/SeriesInput';
 import { DipChart } from './components/DipChart';
@@ -322,9 +324,32 @@ function App() {
   };
 
   const isLanding = !hasAnalyzed && sectorAnalyses.length === 0;
+  const canonical = SITE_URL || '';
+
+  const websiteLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    ...(SITE_URL ? { url: SITE_URL } : {}),
+  } as const;
 
   return (
     <div className={`app-container ${isLanding ? 'landing' : 'analysis'}`}>
+      <Helmet>
+        <title>{DEFAULT_TITLE}</title>
+        <meta name="description" content={SITE_DESCRIPTION} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content={SITE_NAME} />
+        <meta property="og:title" content={DEFAULT_TITLE} />
+        <meta property="og:description" content={SITE_DESCRIPTION} />
+        {canonical && <meta property="og:url" content={canonical} />}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={DEFAULT_TITLE} />
+        <meta name="twitter:description" content={SITE_DESCRIPTION} />
+        {canonical && <link rel="canonical" href={canonical} />}
+        <script type="application/ld+json">{JSON.stringify(websiteLd)}</script>
+      </Helmet>
       <div className="app-content">
         {/* Header */}
         {!hasAnalyzed && sectorAnalyses.length === 0 && images.length > 0 && (

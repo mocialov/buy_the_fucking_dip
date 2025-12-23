@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Point crawlers to the sitemap generated at build (project site path)
+Sitemap: /buy_the_fucking_dip/sitemap.xml

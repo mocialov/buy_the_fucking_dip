@@ -2,9 +2,11 @@
   "name": "dip-detection-webapp",
   "version": "1.0.1",
   "type": "module",
+  "homepage": "https://mocialov.github.io/buy_the_fucking_dip/",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "node scripts/copy-404.mjs && node scripts/generate-sitemap.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "sync-data": "tsx scripts/sync-data.ts",
@@ -18,7 +20,8 @@
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-helmet-async": "^2.0.5"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
