@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "postbuild": "node scripts/copy-404.mjs && node scripts/generate-sitemap.mjs",
+    "postbuild": "node scripts/copy-404.mjs && node scripts/copy-og-image.mjs && node scripts/generate-sitemap.mjs",
     "preview": "vite preview",
     "test": "vitest",
     "sync-data": "tsx scripts/sync-data.ts",

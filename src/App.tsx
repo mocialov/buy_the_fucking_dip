@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { DEFAULT_TITLE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from './config/seo';
+import { DEFAULT_TITLE, SITE_DESCRIPTION, SITE_NAME, SITE_URL, OG_IMAGE } from './config/seo';
 import { findAllDips, findDipsOptimalForInterval } from './dip/detectDip';
 import { SeriesInput, SectorAnalysis, MARKET_SECTORS, fetchMultipleStockDataHybrid, fetchStockDataHybrid } from './components/SeriesInput';
 import { DipChart } from './components/DipChart';
@@ -344,9 +344,11 @@ function App() {
         <meta property="og:title" content={DEFAULT_TITLE} />
         <meta property="og:description" content={SITE_DESCRIPTION} />
         {canonical && <meta property="og:url" content={canonical} />}
+        {OG_IMAGE && <meta property="og:image" content={OG_IMAGE} />}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={DEFAULT_TITLE} />
         <meta name="twitter:description" content={SITE_DESCRIPTION} />
+        {OG_IMAGE && <meta name="twitter:image" content={OG_IMAGE} />}
         {canonical && <link rel="canonical" href={canonical} />}
         <script type="application/ld+json">{JSON.stringify(websiteLd)}</script>
       </Helmet>
